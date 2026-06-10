@@ -26,6 +26,12 @@ import random
 from loguru import logger
 from playwright.async_api import async_playwright, Browser, Page, BrowserContext
 
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
 
 @dataclass
 class CVEInfo:
@@ -61,20 +67,24 @@ class CrawlConfig:
     base_url: str = "https://avd.aliyun.com"
     list_url: str = "https://avd.aliyun.com/nvd/list"
     detail_url_template: str = "https://avd.aliyun.com/detail?id={}"
-    
+
     # 爬取配置
     max_pages: int = 100  # 最大爬取页数
     page_size: int = 30   # 每页条目数
     delay_range: tuple = (1, 3)  # 请求间隔范围（秒）
     timeout: int = 30     # 页面加载超时
-    
+    max_retries: int = 3  # 最大重试次数
+    cve_type: str = ""    # CVE类型筛选，如 "数据库"、"操作系统" 等
+
     # 浏览器配置
     headless: bool = True
     user_agent: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    
+
     # 数据存储
     data_dir: str = "./data/aliyun_cve"
     cache_ttl: int = 86400  # 缓存TTL（秒）
+    output_format: str = "json"  # 输出格式: json 或 yaml
+    split_by: str = "day"  # 拆分维度: day 或 month
 
 
 @dataclass
@@ -112,7 +122,14 @@ class CVEDetail:
     disclosure_date: str = ""
     patch_status: str = ""
     exploit_status: str = ""
-    aliyun_products: List[str] = field(default_factory=list)
+
+    @staticmethod
+    def clean_text(text: str) -> str:
+        """清理文本中的换行符和多余空格"""
+        if not text:
+            return ""
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
 
     def _parse_cvss_score(self, cvss_str: str) -> float:
         """解析CVSS分数，处理各种可能的值"""
@@ -218,9 +235,9 @@ class CVEDetail:
                 severity=severity,
                 cvss_score=cvss_score,
                 published_date=published_date,
-                modified_date=published_date,  # 使用披露日期作为修改日期
+                modified_date=published_date,
                 references=self.references,
-                affected_products=self.aliyun_products,
+                affected_products=[],
                 cwe_ids=cwe_ids
             )
             
@@ -240,36 +257,80 @@ class CVEDetail:
     def to_dict(self) -> Dict[str, Any]:
         return {
             'cve_id': self.cve_id,
-            'title': self.title,
-            'description': self.description,
-            'solution': self.solution,
+            'title': self.clean_text(self.title),
+            'description': self.clean_text(self.description),
+            'solution': self.clean_text(self.solution),
             'references': self.references,
             'cvss_score': self.cvss_score,
             'cvss_vector': self.cvss_vector,
             'cwe_info': self.cwe_info,
             'disclosure_date': self.disclosure_date,
-            'patch_status': self.patch_status,
-            'exploit_status': self.exploit_status,
-            'aliyun_products': self.aliyun_products
+            'patch_status': self.clean_text(self.patch_status),
+            'exploit_status': self.clean_text(self.exploit_status)
+        }
+
+    def to_merged_dict(self) -> Dict[str, Any]:
+        """转换为合并格式（同时包含info和detail的字段）"""
+        cvss_score = self._parse_cvss_score(self.cvss_score)
+
+        if cvss_score >= 9.0:
+            severity = "CRITICAL"
+        elif cvss_score >= 7.0:
+            severity = "HIGH"
+        elif cvss_score >= 4.0:
+            severity = "MEDIUM"
+        elif cvss_score > 0.0:
+            severity = "LOW"
+        else:
+            severity = self._guess_severity_from_description()
+
+        try:
+            published_date = datetime.strptime(self.disclosure_date, "%Y-%m-%d")
+        except:
+            published_date = datetime.now()
+
+        cwe_ids = []
+        for cwe in self.cwe_info:
+            if 'id' in cwe and cwe['id'].startswith('CWE-'):
+                cwe_ids.append(cwe['id'])
+
+        return {
+            'cve_id': self.cve_id,
+            'title': self.clean_text(self.title),
+            'description': self.clean_text(self.description),
+            'severity': severity,
+            'cvss_score': cvss_score,
+            'cvss_vector': self.cvss_vector,
+            'published_date': published_date.isoformat(),
+            'modified_date': published_date.isoformat(),
+            'references': self.references,
+            'solution': self.clean_text(self.solution),
+            'cwe_ids': cwe_ids,
+            'patch_status': self.clean_text(self.patch_status),
+            'exploit_status': self.clean_text(self.exploit_status)
         }
 
 
 class AliyunCVECrawler:
     """阿里云CVE爬虫"""
-    
+
     def __init__(self, config: Optional[CrawlConfig] = None):
         """初始化爬虫"""
         self.config = config or CrawlConfig()
-        
+
         # 创建数据目录
         self.data_dir = Path(self.config.data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # 缓存和状态
         self.crawled_cves: Set[str] = set()
         self.failed_cves: Set[str] = set()
         self.stop_requested: bool = False
-        
+
+        # 失败记录文件
+        self.failed_file = self.data_dir / "failed_cves.json"
+        self._load_failed_cves()
+
         # 性能指标
         self.metrics = {
             "pages_crawled": 0,
@@ -279,12 +340,48 @@ class AliyunCVECrawler:
             "start_time": None,
             "end_time": None
         }
-        
+
         # 浏览器实例
         self.browser: Optional[Browser] = None
         self.context: Optional[BrowserContext] = None
-        
+
         logger.info("阿里云CVE爬虫初始化完成")
+
+    def _load_failed_cves(self):
+        """加载之前失败记录的CVE"""
+        if self.failed_file.exists():
+            try:
+                with open(self.failed_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.failed_cves = set(data.get('failed_cves', []))
+                    if self.failed_cves:
+                        logger.info(f"已加载 {len(self.failed_cves)} 条失败记录")
+            except Exception as e:
+                logger.warning(f"加载失败记录失败: {e}")
+                self.failed_cves = set()
+
+    def _save_failed_cves(self):
+        """保存失败记录的CVE到文件"""
+        try:
+            data = {
+                "timestamp": datetime.now().isoformat(),
+                "failed_cves": list(self.failed_cves)
+            }
+            with open(self.failed_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"保存失败记录失败: {e}")
+
+    def get_failed_cves(self) -> List[str]:
+        """获取所有失败记录的CVE ID列表"""
+        return list(self.failed_cves)
+
+    def clear_failed_cves(self):
+        """清除失败记录"""
+        self.failed_cves.clear()
+        if self.failed_file.exists():
+            self.failed_file.unlink()
+        logger.info("已清除失败记录")
 
     def request_stop(self):
         """请求停止爬取"""
@@ -345,24 +442,24 @@ class AliyunCVECrawler:
         except Exception as e:
             logger.error(f"浏览器清理失败: {e}")
     
-    async def crawl_all(self, start_page: int = 1, max_pages: Optional[int] = None) -> List[CVEInfo]:
+    async def crawl_all(self, start_page: int = 1, max_pages: Optional[int] = None) -> List[CVEDetail]:
         """爬取所有CVE数据"""
         try:
             self.metrics["start_time"] = datetime.now()
             max_pages = max_pages or self.config.max_pages
-            
+
             logger.info(f"开始爬取阿里云CVE数据，起始页: {start_page}, 最大页数: {max_pages}")
-            
+
             # 第一步：爬取CVE列表
             cve_list = await self._crawl_cve_list(start_page, max_pages)
             self.metrics["cves_found"] = len(cve_list)
-            
+
             logger.info(f"找到 {len(cve_list)} 个CVE条目")
-            
+
             # 第二步：爬取CVE详情
             cve_details = await self._crawl_cve_details(cve_list)
             self.metrics["cves_detailed"] = len(cve_details)
-            
+
             # 第三步：转换为标准格式
             cve_infos = []
             for detail in cve_details:
@@ -372,17 +469,17 @@ class AliyunCVECrawler:
                 except Exception as e:
                     logger.error(f"转换CVE信息失败 {detail.cve_id}: {e}")
                     self.metrics["errors"] += 1
-            
+
             # 保存结果
-            await self._save_results(cve_details, cve_infos)
-            
+            await self._save_results(cve_details, cve_details)
+
             self.metrics["end_time"] = datetime.now()
             duration = (self.metrics["end_time"] - self.metrics["start_time"]).total_seconds()
-            
-            logger.info(f"爬取完成，耗时: {duration:.2f}秒，成功: {len(cve_infos)}，失败: {self.metrics['errors']}")
-            
-            return cve_infos
-            
+
+            logger.info(f"爬取完成，耗时: {duration:.2f}秒，成功: {len(cve_details)}，失败: {len(self.failed_cves)}")
+
+            return cve_details
+
         except Exception as e:
             logger.error(f"爬取过程失败: {e}")
             self.metrics["errors"] += 1
@@ -423,22 +520,24 @@ class AliyunCVECrawler:
     async def _crawl_list_page(self, page_num: int) -> List[CVEListItem]:
         """爬取单个列表页面"""
         page = await self.context.new_page()
-        
+
         try:
             # 构建URL
             url = f"{self.config.list_url}?page={page_num}"
-            
+            if self.config.cve_type:
+                url = f"{self.config.list_url}?type={self.config.cve_type}&page={page_num}"
+
             # 访问页面
             await page.goto(url, timeout=self.config.timeout * 1000)
             await page.wait_for_load_state('networkidle')
-            
+
             # 等待表格加载
             await page.wait_for_selector('table tbody tr', timeout=10000)
-            
+
             # 提取CVE数据
             cve_items = []
             rows = await page.query_selector_all('table tbody tr')
-            
+
             for row in rows:
                 try:
                     # 提取各列数据
@@ -453,19 +552,19 @@ class AliyunCVECrawler:
                                 detail_url = urljoin(self.config.base_url, detail_url)
                         else:
                             continue
-                        
+
                         # 漏洞名称
                         title = await cells[1].text_content()
-                        
+
                         # 漏洞类型
                         cwe_type = await cells[2].text_content()
-                        
+
                         # 披露时间
                         disclosure_date = await cells[3].text_content()
-                        
+
                         # CVSS评分
                         cvss_score = await cells[4].text_content()
-                        
+
                         cve_item = CVEListItem(
                             cve_id=cve_id.strip(),
                             title=title.strip(),
@@ -474,16 +573,16 @@ class AliyunCVECrawler:
                             cvss_score=cvss_score.strip(),
                             detail_url=detail_url
                         )
-                        
+
                         cve_items.append(cve_item)
-                        
+
                 except Exception as e:
                     logger.warning(f"解析CVE行失败: {e}")
                     continue
-            
+
             logger.debug(f"第 {page_num} 页提取到 {len(cve_items)} 个CVE")
             return cve_items
-            
+
         except Exception as e:
             logger.error(f"爬取列表页面失败 {page_num}: {e}")
             raise
@@ -530,30 +629,30 @@ class AliyunCVECrawler:
         
         return cve_details
     
-    async def _crawl_detail_page(self, cve_item: CVEListItem) -> Optional[CVEDetail]:
+    async def _crawl_detail_page(self, cve_item: CVEListItem, retries: int = 0) -> Optional[CVEDetail]:
         """爬取单个CVE详情页面"""
         page = await self.context.new_page()
-        
+
         try:
             # 访问详情页面
             await page.goto(cve_item.detail_url, timeout=self.config.timeout * 1000)
             await page.wait_for_load_state('networkidle')
-            
+
             # 等待内容加载
             await page.wait_for_selector('h5', timeout=10000)
-            
+
             # 提取标题
             title_element = await page.query_selector('h5')
             title = await title_element.text_content() if title_element else cve_item.title
-            
+
             # 提取基本信息
             cve_id = cve_item.cve_id
             disclosure_date = cve_item.disclosure_date
-            
+
             # 提取利用情况和补丁情况
             exploit_status = ""
             patch_status = ""
-            
+
             info_sections = await page.query_selector_all('div.info-section div')
             for section in info_sections:
                 text = await section.text_content()
@@ -561,19 +660,19 @@ class AliyunCVECrawler:
                     exploit_status = text.replace("利用情况", "").strip()
                 elif "补丁情况" in text:
                     patch_status = text.replace("补丁情况", "").strip()
-            
+
             # 提取漏洞描述
             description = ""
             desc_element = await page.query_selector('h6:has-text("漏洞描述") + div')
             if desc_element:
                 description = await desc_element.text_content()
-            
+
             # 提取解决建议
             solution = ""
             solution_element = await page.query_selector('h6:has-text("解决建议") + div')
             if solution_element:
                 solution = await solution_element.text_content()
-            
+
             # 提取参考链接
             references = []
             ref_links = await page.query_selector_all('table a[href]')
@@ -581,18 +680,18 @@ class AliyunCVECrawler:
                 href = await link.get_attribute('href')
                 if href and href.startswith('http'):
                     references.append(href)
-            
+
             # 提取CVSS信息
             cvss_score = cve_item.cvss_score
             cvss_vector = ""
-            
+
             cvss_element = await page.query_selector('div:has-text("CVSS:3.1/")')
             if cvss_element:
                 cvss_text = await cvss_element.text_content()
                 cvss_match = re.search(r'CVSS:3\.1/[A-Z:/]+', cvss_text)
                 if cvss_match:
                     cvss_vector = cvss_match.group()
-            
+
             # 提取CWE信息
             cwe_info = []
             cwe_rows = await page.query_selector_all('table tbody tr')
@@ -606,15 +705,7 @@ class AliyunCVECrawler:
                             'id': cwe_id.strip(),
                             'description': cwe_desc.strip()
                         })
-            
-            # 提取阿里云产品覆盖情况
-            aliyun_products = []
-            product_buttons = await page.query_selector_all('button:has-text("云安全中心"), button:has-text("WAF"), button:has-text("云防火墙"), button:has-text("RASP")')
-            for button in product_buttons:
-                product_name = await button.text_content()
-                if product_name:
-                    aliyun_products.append(product_name.strip())
-            
+
             # 创建CVE详情对象
             cve_detail = CVEDetail(
                 cve_id=cve_id,
@@ -627,77 +718,73 @@ class AliyunCVECrawler:
                 cwe_info=cwe_info,
                 disclosure_date=disclosure_date,
                 patch_status=patch_status,
-                exploit_status=exploit_status,
-                aliyun_products=aliyun_products
+                exploit_status=exploit_status
             )
-            
+
             # 随机延迟
             delay = random.uniform(*self.config.delay_range)
             await asyncio.sleep(delay)
-            
+
             return cve_detail
-            
+
         except Exception as e:
             logger.error(f"爬取CVE详情页面失败 {cve_item.cve_id}: {e}")
+            if retries < self.config.max_retries:
+                logger.info(f"重试 {cve_item.cve_id} ({retries + 1}/{self.config.max_retries})")
+                await asyncio.sleep(2 ** retries)
+                return await self._crawl_detail_page(cve_item, retries + 1)
             raise
         finally:
             await page.close()
     
-    async def _save_results(self, cve_details: List[CVEDetail], cve_infos: List[CVEInfo]):
+    async def _save_results(self, cve_details: List[CVEDetail], cve_infos: List[CVEDetail]):
         """保存爬取结果"""
         try:
+            self._save_failed_cves()
+
+            merged_data = [detail.to_merged_dict() for detail in cve_details]
+
+            if not merged_data:
+                logger.info("没有数据需要保存")
+                return
+
+            if self.config.split_by == "month":
+                date_suffix = datetime.now().strftime("%Y%m")
+            else:
+                date_suffix = datetime.now().strftime("%Y%m%d")
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
-            # 保存原始详情数据
-            details_file = self.data_dir / f"cve_details_{timestamp}.json"
-            details_data = {
-                "timestamp": timestamp,
-                "count": len(cve_details),
-                "details": [detail.to_dict() for detail in cve_details]
-            }
-            
-            async with aiofiles.open(details_file, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(details_data, ensure_ascii=False, indent=2))
-            
-            # 保存标准格式数据
-            infos_file = self.data_dir / f"cve_infos_{timestamp}.json"
-            infos_data = {
-                "timestamp": timestamp,
-                "count": len(cve_infos),
-                "infos": [info.to_dict() for info in cve_infos]
-            }
-            
-            async with aiofiles.open(infos_file, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(infos_data, ensure_ascii=False, indent=2))
-            
-            # 保存爬取统计
-            stats_file = self.data_dir / f"crawl_stats_{timestamp}.json"
-            stats_data = {
-                "timestamp": timestamp,
-                "metrics": self.metrics,
-                "crawled_cves": list(self.crawled_cves),
-                "failed_cves": list(self.failed_cves)
-            }
-            
-            async with aiofiles.open(stats_file, 'w', encoding='utf-8') as f:
-                await f.write(json.dumps(stats_data, ensure_ascii=False, indent=2))
-            
-            logger.info(f"结果已保存到: {self.data_dir}")
-            
+
+            if self.config.output_format == "yaml" and YAML_AVAILABLE:
+                output_file = self.data_dir / f"cve_data_{date_suffix}.yaml"
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    yaml.dump(merged_data, f, allow_unicode=True, default_flow_style=False)
+            else:
+                output_file = self.data_dir / f"cve_data_{date_suffix}.json"
+                output_data = {
+                    "timestamp": timestamp,
+                    "count": len(merged_data),
+                    "data": merged_data
+                }
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    json.dump(output_data, f, ensure_ascii=False, indent=2)
+
+            logger.info(f"结果已保存到: {output_file}")
+
         except Exception as e:
             logger.error(f"保存结果失败: {e}")
     
-    async def crawl_incremental(self, since_date: Optional[datetime] = None) -> List[CVEInfo]:
+    async def crawl_incremental(self, since_date: Optional[datetime] = None) -> List[CVEDetail]:
         """增量爬取（爬取指定日期之后的CVE）"""
         try:
             if not since_date:
                 since_date = datetime.now() - timedelta(days=7)  # 默认爬取最近7天
-            
+
             logger.info(f"开始增量爬取，起始日期: {since_date.strftime('%Y-%m-%d')}")
-            
+
             # 爬取第一页检查最新数据
             cve_list = await self._crawl_list_page(1)
-            
+
             # 过滤出需要爬取的CVE
             new_cves = []
             for cve_item in cve_list:
@@ -708,16 +795,16 @@ class AliyunCVECrawler:
                 except:
                     # 日期解析失败，保守起见包含在内
                     new_cves.append(cve_item)
-            
+
             if not new_cves:
                 logger.info("没有新的CVE数据")
                 return []
-            
+
             logger.info(f"找到 {len(new_cves)} 个新CVE")
-            
+
             # 爬取详情
             cve_details = await self._crawl_cve_details(new_cves)
-            
+
             # 转换为标准格式
             cve_infos = []
             for detail in cve_details:
@@ -726,71 +813,130 @@ class AliyunCVECrawler:
                     cve_infos.append(cve_info)
                 except Exception as e:
                     logger.error(f"转换CVE信息失败 {detail.cve_id}: {e}")
-            
+
             # 保存结果
-            await self._save_results(cve_details, cve_infos)
-            
-            logger.info(f"增量爬取完成，获得 {len(cve_infos)} 个新CVE")
-            return cve_infos
-            
+            await self._save_results(cve_details, cve_details)
+
+            logger.info(f"增量爬取完成，获得 {len(cve_details)} 个新CVE")
+            return cve_details
+
         except Exception as e:
             logger.error(f"增量爬取失败: {e}")
             raise
-    
+
+    async def retry_failed(self) -> List[CVEDetail]:
+        """重试之前失败的CVE"""
+        if not self.failed_cves:
+            logger.info("没有需要重试的失败记录")
+            return []
+
+        logger.info(f"开始重试 {len(self.failed_cves)} 个失败的CVE")
+
+        cve_list = []
+        for cve_id in list(self.failed_cves):
+            cve_list.append(CVEListItem(
+                cve_id=cve_id,
+                title="",
+                cwe_type="",
+                disclosure_date="",
+                cvss_score="",
+                detail_url=f"{self.config.detail_url_template.format(cve_id)}"
+            ))
+
+        cve_details = await self._crawl_cve_details(cve_list)
+
+        if cve_details:
+            await self._save_results(cve_details, cve_details)
+
+        logger.info(f"重试完成，成功: {len(cve_details)}, 剩余失败: {len(self.failed_cves)}")
+        return cve_details
+
     def get_metrics(self) -> Dict[str, Any]:
         """获取爬取指标"""
         return self.metrics.copy()
 
 
 # 便捷函数
-async def crawl_aliyun_cves(max_pages: int = 10, 
+async def crawl_aliyun_cves(max_pages: int = 10,
                            start_page: int = 1,
-                           headless: bool = True) -> List[CVEInfo]:
+                           headless: bool = True,
+                           output_format: str = "json",
+                           split_by: str = "day",
+                           cve_type: str = "") -> List[CVEDetail]:
     """便捷的CVE爬取函数"""
     config = CrawlConfig(
         max_pages=max_pages,
-        headless=headless
+        headless=headless,
+        output_format=output_format,
+        split_by=split_by,
+        cve_type=cve_type
     )
-    
+
     async with AliyunCVECrawler(config) as crawler:
         return await crawler.crawl_all(start_page, max_pages)
 
 
-async def crawl_aliyun_cves_incremental(days: int = 7) -> List[CVEInfo]:
+async def crawl_aliyun_cves_incremental(days: int = 7,
+                                        output_format: str = "json",
+                                        split_by: str = "day",
+                                        cve_type: str = "") -> List[CVEDetail]:
     """便捷的增量CVE爬取函数"""
-    config = CrawlConfig()
+    config = CrawlConfig(
+        output_format=output_format,
+        split_by=split_by,
+        cve_type=cve_type
+    )
     since_date = datetime.now() - timedelta(days=days)
-    
+
     async with AliyunCVECrawler(config) as crawler:
         return await crawler.crawl_incremental(since_date)
+
+
+async def retry_aliyun_cves(output_format: str = "json",
+                            split_by: str = "day",
+                            cve_type: str = "") -> List[CVEDetail]:
+    """便捷的重试失败CVE函数"""
+    config = CrawlConfig(
+        output_format=output_format,
+        split_by=split_by,
+        cve_type=cve_type
+    )
+
+    async with AliyunCVECrawler(config) as crawler:
+        return await crawler.retry_failed()
 
 
 # 命令行接口
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="阿里云CVE爬虫")
     parser.add_argument("--pages", type=int, default=5, help="爬取页数")
     parser.add_argument("--start-page", type=int, default=1, help="起始页")
     parser.add_argument("--incremental", action="store_true", help="增量爬取")
+    parser.add_argument("--retry", action="store_true", help="重试失败的CVE")
     parser.add_argument("--days", type=int, default=7, help="增量爬取天数")
     parser.add_argument("--headless", action="store_true", default=True, help="无头模式")
-    
+    parser.add_argument("--format", type=str, default="json", choices=["json", "yaml"], help="输出格式")
+    parser.add_argument("--split", type=str, default="day", choices=["day", "month"], help="文件拆分维度")
+    parser.add_argument("--type", type=str, default="", help="CVE类型筛选，如: 数据库、操作系统、应用软件等")
+
     args = parser.parse_args()
-    
+
     async def main():
-        if args.incremental:
-            cve_infos = await crawl_aliyun_cves_incremental(args.days)
+        if args.retry:
+            cve_details = await retry_aliyun_cves(args.format, args.split, args.type)
+        elif args.incremental:
+            cve_details = await crawl_aliyun_cves_incremental(args.days, args.format, args.split, args.type)
         else:
-            cve_infos = await crawl_aliyun_cves(args.pages, args.start_page, args.headless)
-        
-        print(f"爬取完成，获得 {len(cve_infos)} 个CVE")
-        
+            cve_details = await crawl_aliyun_cves(args.pages, args.start_page, args.headless, args.format, args.split, args.type)
+
+        print(f"爬取完成，获得 {len(cve_details)} 个CVE")
+
         # 显示前几个结果
-        for i, cve in enumerate(cve_infos[:3]):
+        for i, cve in enumerate(cve_details[:3]):
             print(f"\n{i+1}. {cve.cve_id}")
             print(f"   描述: {cve.description[:100]}...")
-            print(f"   严重性: {cve.severity}")
-            print(f"   CVSS: {cve.cvss_score}")
-    
+            print(f"   严重性: {cve.to_merged_dict().get('severity', 'N/A')}")
+
     asyncio.run(main())

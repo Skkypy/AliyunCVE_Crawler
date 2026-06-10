@@ -1,2 +1,5 @@
-_pycache_/
+venv
+__pycache__
+__pycache__/gui.cpython-313.pyc
+__pycache__/main.cpython-313.pyc
 data/
