@@ -1031,15 +1031,8 @@ class AliyunCVECrawler:
                     except ValueError:
                         pass
 
-            if dates:
-                min_date = min(dates)
-                max_date = max(dates)
-                if self.config.split_by == "month":
-                    date_range_prefix = max_date.strftime("%Y%m")
-                else:
-                    date_range_prefix = max_date.strftime("%Y%m%d")
-            else:
-                date_range_prefix = datetime.now().strftime("%Y%m%d")
+            
+            date_range_prefix = datetime.now().strftime("%Y%m%d")
 
             parts = ["cve_data"]
 
