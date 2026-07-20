@@ -5,6 +5,7 @@ loguru>=0.7.2
 
 # 数据处理
 dataclasses-json>=0.6.1
+pyyaml>=6.0
 
 # 可选依赖（如果需要与其他系统集成）
 requests>=2.31.0
