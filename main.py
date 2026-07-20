@@ -630,7 +630,14 @@ class AliyunCVECrawler:
                 await asyncio.sleep(delay)
                 page_num += 1
 
+            except TimeoutError:
+                logger.info(f"月度爬取第 {page_num} 页超时，已到达最后一页，停止爬取")
+                break
             except Exception as e:
+                error_str = str(e)
+                if "Timeout" in error_str or "timeout" in error_str:
+                    logger.info(f"月度爬取第 {page_num} 页超时，已到达最后一页，停止爬取")
+                    break
                 logger.error(f"月度爬取第 {page_num} 页失败: {e}")
                 self.metrics["errors"] += 1
                 continue
@@ -661,7 +668,14 @@ class AliyunCVECrawler:
                 delay = random.uniform(*self.config.delay_range)
                 await asyncio.sleep(delay)
 
+            except TimeoutError:
+                logger.info(f"搜索爬取第 {page_num} 页超时，已到达最后一页，停止爬取")
+                break
             except Exception as e:
+                error_str = str(e)
+                if "Timeout" in error_str or "timeout" in error_str:
+                    logger.info(f"搜索爬取第 {page_num} 页超时，已到达最后一页，停止爬取")
+                    break
                 logger.error(f"搜索爬取第 {page_num} 页失败: {e}")
                 self.metrics["errors"] += 1
                 continue
@@ -724,7 +738,14 @@ class AliyunCVECrawler:
                 await asyncio.sleep(delay)
                 page_num += 1
 
+            except TimeoutError:
+                logger.info(f"搜索月度爬取第 {page_num} 页超时，已到达最后一页，停止爬取")
+                break
             except Exception as e:
+                error_str = str(e)
+                if "Timeout" in error_str or "timeout" in error_str:
+                    logger.info(f"搜索月度爬取第 {page_num} 页超时，已到达最后一页，停止爬取")
+                    break
                 logger.error(f"搜索月度爬取第 {page_num} 页失败: {e}")
                 self.metrics["errors"] += 1
                 continue
@@ -957,10 +978,21 @@ class AliyunCVECrawler:
             cvss_score = cve_item.cvss_score
             cvss_vector = ""
 
-            cvss_element = await page.query_selector('div:has-text("CVSS:3.1/")')
-            if cvss_element:
-                cvss_text = await cvss_element.text_content()
-                cvss_match = re.search(r'CVSS:3\.1/[A-Z:/]+', cvss_text)
+            cvss_score_element = await page.query_selector('.cvss-breakdown__score')
+            if cvss_score_element:
+                cvss_score_text = await cvss_score_element.text_content()
+                cvss_score_text = cvss_score_text.strip()
+                try:
+                    cvss_score_float = float(cvss_score_text)
+                    if cvss_score == cve_item.cvss_score or not cvss_score:
+                        cvss_score = cvss_score_text
+                except ValueError:
+                    pass
+
+            cvss_vector_element = await page.query_selector('div:has-text("CVSS:3.1/")')
+            if cvss_vector_element:
+                cvss_text = await cvss_vector_element.text_content()
+                cvss_match = re.search(r'CVSS:3\.1/[A-Z:/0-9.]+', cvss_text)
                 if cvss_match:
                     cvss_vector = cvss_match.group()
 
