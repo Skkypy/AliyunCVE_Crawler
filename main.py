@@ -1034,7 +1034,7 @@ class AliyunCVECrawler:
             
             date_range_prefix = datetime.now().strftime("%Y%m%d")
 
-            parts = ["cve_data"]
+            parts = ["cve_"]
 
             if self.config.data_type:
                 data_type_clean = self.config.data_type.replace(",", "-")
@@ -1277,6 +1277,9 @@ async def retry_aliyun_cves(output_format: str = "json",
 if __name__ == "__main__":
     import argparse
     import sys
+    import warnings
+
+    warnings.filterwarnings("ignore", message="Event loop is closed")
 
     parser = argparse.ArgumentParser(
         description="阿里云CVE爬虫",
@@ -1399,4 +1402,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n爬取自动中断")
+        print("\n爬取被用户中断")
+    finally:
+        import gc
+        gc.collect()
