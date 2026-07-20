@@ -77,6 +77,8 @@ class CrawlConfig:
     max_retries: int = 3  # 最大重试次数
     cve_type: str = ""    # CVE类型筛选，如 "数据库"、"操作系统" 等
     search_keyword: str = ""  # 搜索关键词，如 "oracle"
+    target_month: str = ""  # 目标月份，如 "2026-07"，按披露时间过滤
+    data_type: str = ""  # 数据库类型（逗号分割）：oracle、达梦、金仓、goldendb、海山、mysql等
 
     # 浏览器配置
     headless: bool = True
@@ -85,7 +87,8 @@ class CrawlConfig:
     # 数据存储
     data_dir: str = "./data/aliyun_cve"
     cache_ttl: int = 86400  # 缓存TTL（秒）
-    output_format: str = "json"  # 输出格式: json 或 yaml
+    output_format: str = "json"  # 内容格式: json 或 yaml
+    output_type: str = "json"  # 输出类型: json 或 md (markdown)
     split_by: str = "day"  # 拆分维度: day 或 month
 
 
@@ -289,7 +292,7 @@ class CVEDetail:
         try:
             published_date = datetime.strptime(self.disclosure_date, "%Y-%m-%d")
         except:
-            published_date = datetime.now()
+            published_date = None
 
         cwe_ids = []
         for cwe in self.cwe_info:
@@ -303,8 +306,9 @@ class CVEDetail:
             'severity': severity,
             'cvss_score': cvss_score,
             'cvss_vector': self.cvss_vector,
-            'published_date': published_date.isoformat(),
-            'modified_date': published_date.isoformat(),
+            'published_date': published_date.isoformat() if published_date else None,
+            'modified_date': published_date.isoformat() if published_date else None,
+            'disclosure_date': self.disclosure_date,
             'references': self.references,
             'solution': self.clean_text(self.solution),
             'cwe_ids': cwe_ids,
@@ -450,20 +454,68 @@ class AliyunCVECrawler:
             self.metrics["start_time"] = datetime.now()
             max_pages = max_pages or self.config.max_pages
 
-            if self.config.search_keyword:
+            all_cve_list = []
+            all_cve_details = []
+
+            if self.config.data_type:
+                data_types = [dt.strip() for dt in self.config.data_type.split(",") if dt.strip()]
+                logger.info(f"开始数据库类型爬取，类型: {data_types}")
+
+                for dt in data_types:
+                    self.config.search_keyword = dt
+                    logger.info(f"正在爬取类型: {dt}")
+
+                    if self.config.target_month:
+                        cve_list = await self._crawl_search_by_month(start_page, max_pages)
+                    else:
+                        cve_list = await self._crawl_search_list(start_page, max_pages)
+
+                    logger.info(f"类型 {dt} 找到 {len(cve_list)} 个CVE条目")
+                    all_cve_list.extend(cve_list)
+
+                    cve_details = await self._crawl_cve_details(cve_list)
+                    all_cve_details.extend(cve_details)
+                    logger.info(f"类型 {dt} 爬取详情完成，获得 {len(cve_details)} 条")
+
+                    delay = random.uniform(*self.config.delay_range)
+                    await asyncio.sleep(delay)
+
+                cve_list = all_cve_list
+                cve_details = all_cve_details
+            elif self.config.target_month:
+                if self.config.search_keyword:
+                    logger.info(f"开始搜索爬取阿里云CVE数据，关键词: {self.config.search_keyword}，目标月份: {self.config.target_month}")
+                    cve_list = await self._crawl_search_by_month(start_page, max_pages)
+                else:
+                    logger.info(f"开始按月爬取，目标月份: {self.config.target_month}，起始页: {start_page}")
+                    cve_list = await self._crawl_list_by_month(start_page, max_pages)
+
+                self.metrics["cves_found"] = len(cve_list)
+                logger.info(f"找到 {len(cve_list)} 个CVE条目")
+
+                cve_details = await self._crawl_cve_details(cve_list)
+                self.metrics["cves_detailed"] = len(cve_details)
+            elif self.config.search_keyword:
                 logger.info(f"开始搜索爬取阿里云CVE数据，关键词: {self.config.search_keyword}")
                 cve_list = await self._crawl_search_list(start_page, max_pages)
+
+                self.metrics["cves_found"] = len(cve_list)
+                logger.info(f"找到 {len(cve_list)} 个CVE条目")
+
+                cve_details = await self._crawl_cve_details(cve_list)
+                self.metrics["cves_detailed"] = len(cve_details)
             else:
                 logger.info(f"开始爬取阿里云CVE数据，起始页: {start_page}, 最大页数: {max_pages}")
                 cve_list = await self._crawl_cve_list(start_page, max_pages)
 
+                self.metrics["cves_found"] = len(cve_list)
+                logger.info(f"找到 {len(cve_list)} 个CVE条目")
+
+                cve_details = await self._crawl_cve_details(cve_list)
+                self.metrics["cves_detailed"] = len(cve_details)
+
             self.metrics["cves_found"] = len(cve_list)
-
-            logger.info(f"找到 {len(cve_list)} 个CVE条目")
-
-            # 第二步：爬取CVE详情
-            cve_details = await self._crawl_cve_details(cve_list)
-            self.metrics["cves_detailed"] = len(cve_details)
+            logger.info(f"共找到 {len(cve_list)} 个CVE条目")
 
             # 第三步：转换为标准格式
             cve_infos = []
@@ -522,6 +574,70 @@ class AliyunCVECrawler:
         
         return cve_list
 
+    async def _crawl_list_by_month(self, start_page: int, max_pages: int) -> List[CVEListItem]:
+        """按目标月份爬取CVE列表，自动翻页直到披露时间不满足月份"""
+        cve_list = []
+        target_year_month = self.config.target_month
+
+        try:
+            target_date = datetime.strptime(target_year_month, "%Y-%m")
+            target_year = target_date.year
+            target_month = target_date.month
+        except ValueError:
+            logger.error(f"无效的月份格式: {target_year_month}，请使用 YYYY-MM 格式")
+            return []
+
+        page_num = start_page
+        stop_due_to_date = False
+
+        while self.metrics["pages_crawled"] < max_pages:
+            if self.stop_requested:
+                logger.info("收到停止请求，中断月度爬取")
+                break
+
+            if stop_due_to_date:
+                logger.info(f"发现比 {target_year_month} 更早的披露时间，停止爬取")
+                break
+
+            try:
+                logger.info(f"月度爬取第 {page_num} 页，目标月份: {target_year_month}")
+
+                page_cves = await self._crawl_list_page(page_num)
+                if not page_cves:
+                    logger.info(f"第 {page_num} 页没有数据，停止爬取")
+                    break
+
+                for cve in page_cves:
+                    try:
+                        cve_date = datetime.strptime(cve.disclosure_date, "%Y-%m-%d")
+                        if cve_date.year < target_year or (cve_date.year == target_year and cve_date.month < target_month):
+                            logger.info(f"发现更早的披露时间 {cve.disclosure_date}，停止爬取")
+                            stop_due_to_date = True
+                            break
+                        elif cve_date.year == target_year and cve_date.month == target_month:
+                            cve_list.append(cve)
+                        else:
+                            cve_list.append(cve)
+                    except ValueError:
+                        cve_list.append(cve)
+
+                if stop_due_to_date:
+                    break
+
+                self.metrics["pages_crawled"] += 1
+
+                delay = random.uniform(*self.config.delay_range)
+                await asyncio.sleep(delay)
+                page_num += 1
+
+            except Exception as e:
+                logger.error(f"月度爬取第 {page_num} 页失败: {e}")
+                self.metrics["errors"] += 1
+                continue
+
+        logger.info(f"月度爬取完成，共获取 {len(cve_list)} 条记录")
+        return cve_list
+
     async def _crawl_search_list(self, start_page: int, max_pages: int) -> List[CVEListItem]:
         """爬取搜索结果列表"""
         cve_list = []
@@ -550,6 +666,70 @@ class AliyunCVECrawler:
                 self.metrics["errors"] += 1
                 continue
 
+        return cve_list
+
+    async def _crawl_search_by_month(self, start_page: int, max_pages: int) -> List[CVEListItem]:
+        """按目标月份爬取搜索结果列表，自动翻页直到披露时间不满足月份"""
+        cve_list = []
+        target_year_month = self.config.target_month
+
+        try:
+            target_date = datetime.strptime(target_year_month, "%Y-%m")
+            target_year = target_date.year
+            target_month = target_date.month
+        except ValueError:
+            logger.error(f"无效的月份格式: {target_year_month}，请使用 YYYY-MM 格式")
+            return []
+
+        page_num = start_page
+        stop_due_to_date = False
+
+        while self.metrics["pages_crawled"] < max_pages:
+            if self.stop_requested:
+                logger.info("收到停止请求，中断搜索爬取")
+                break
+
+            if stop_due_to_date:
+                logger.info(f"发现比 {target_year_month} 更早的披露时间，停止爬取")
+                break
+
+            try:
+                logger.info(f"搜索月度爬取第 {page_num} 页，目标月份: {target_year_month}")
+
+                page_cves = await self._crawl_search_page(page_num)
+                if not page_cves:
+                    logger.info(f"搜索第 {page_num} 页没有数据，停止爬取")
+                    break
+
+                for cve in page_cves:
+                    try:
+                        cve_date = datetime.strptime(cve.disclosure_date, "%Y-%m-%d")
+                        if cve_date.year < target_year or (cve_date.year == target_year and cve_date.month < target_month):
+                            logger.info(f"发现更早的披露时间 {cve.disclosure_date}，停止爬取")
+                            stop_due_to_date = True
+                            break
+                        elif cve_date.year == target_year and cve_date.month == target_month:
+                            cve_list.append(cve)
+                        else:
+                            cve_list.append(cve)
+                    except ValueError:
+                        cve_list.append(cve)
+
+                if stop_due_to_date:
+                    break
+
+                self.metrics["pages_crawled"] += 1
+
+                delay = random.uniform(*self.config.delay_range)
+                await asyncio.sleep(delay)
+                page_num += 1
+
+            except Exception as e:
+                logger.error(f"搜索月度爬取第 {page_num} 页失败: {e}")
+                self.metrics["errors"] += 1
+                continue
+
+        logger.info(f"搜索月度爬取完成，共获取 {len(cve_list)} 条记录")
         return cve_list
 
     async def _crawl_list_page(self, page_num: int) -> List[CVEListItem]:
@@ -840,19 +1020,54 @@ class AliyunCVECrawler:
                 logger.info("没有数据需要保存")
                 return
 
-            if self.config.split_by == "month":
-                date_suffix = datetime.now().strftime("%Y%m")
-            else:
-                date_suffix = datetime.now().strftime("%Y%m%d")
-
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-            if self.config.output_format == "yaml" and YAML_AVAILABLE:
-                output_file = self.data_dir / f"cve_data_{date_suffix}.yaml"
+            dates = []
+            for item in merged_data:
+                if item.get('disclosure_date'):
+                    try:
+                        dt = datetime.strptime(item['disclosure_date'], "%Y-%m-%d")
+                        dates.append(dt)
+                    except ValueError:
+                        pass
+
+            if dates:
+                min_date = min(dates)
+                max_date = max(dates)
+                if self.config.split_by == "month":
+                    date_range_prefix = min_date.strftime("%Y%m")
+                else:
+                    date_range_prefix = min_date.strftime("%Y%m%d")
+            else:
+                date_range_prefix = datetime.now().strftime("%Y%m%d")
+
+            parts = ["cve_data"]
+
+            if self.config.data_type:
+                data_type_clean = self.config.data_type.replace(",", "-")
+                parts.append(f"data-{data_type_clean}")
+            if self.config.search_keyword and not self.config.data_type:
+                parts.append(f"kw-{self.config.search_keyword}")
+            if self.config.cve_type:
+                parts.append(f"type-{self.config.cve_type}")
+            if self.config.target_month:
+                parts.append(f"month-{self.config.target_month.replace('-', '')}")
+
+            parts.append(date_range_prefix)
+
+            filename_prefix = "_".join(parts)
+
+            if self.config.output_type == "md":
+                output_file = self.data_dir / f"{filename_prefix}.md"
+                md_content = self._generate_markdown(merged_data, timestamp)
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(md_content)
+            elif self.config.output_format == "yaml" and YAML_AVAILABLE:
+                output_file = self.data_dir / f"{filename_prefix}.yaml"
                 with open(output_file, 'w', encoding='utf-8') as f:
                     yaml.dump(merged_data, f, allow_unicode=True, default_flow_style=False)
             else:
-                output_file = self.data_dir / f"cve_data_{date_suffix}.json"
+                output_file = self.data_dir / f"{filename_prefix}.json"
                 output_data = {
                     "timestamp": timestamp,
                     "count": len(merged_data),
@@ -865,6 +1080,63 @@ class AliyunCVECrawler:
 
         except Exception as e:
             logger.error(f"保存结果失败: {e}")
+
+    def _generate_markdown(self, data: List[Dict[str, Any]], timestamp: str) -> str:
+        """生成Markdown格式内容"""
+        lines = []
+        lines.append(f"# CVE漏洞列表\n")
+        lines.append(f"- 生成时间: {timestamp}\n")
+        lines.append(f"- 总数量: {len(data)}\n\n")
+
+        lines.append("## 漏洞列表\n\n")
+        lines.append("| CVE ID | 标题 | 严重性 | CVSS | 披露日期 | CWE | 补丁状态 | 利用状态 |\n")
+        lines.append("|--------|------|--------|------|----------|-----|---------|----------|\n")
+
+        for item in data:
+            cve_id = item.get('cve_id', '')
+            title = item.get('title', '')[:50] + ('...' if len(item.get('title', '')) > 50 else '')
+            severity = item.get('severity', 'N/A')
+            cvss = item.get('cvss_score', 'N/A')
+            disclosure_date = item.get('disclosure_date', 'N/A')
+            cwe = ', '.join(item.get('cwe_ids', [])[:2]) if item.get('cwe_ids') else 'N/A'
+            patch = item.get('patch_status', 'N/A')
+            exploit = item.get('exploit_status', 'N/A')
+
+            lines.append(f"| {cve_id} | {title} | {severity} | {cvss} | {disclosure_date} | {cwe} | {patch} | {exploit} |\n")
+
+        lines.append("\n## 漏洞详情\n\n")
+        for item in data:
+            lines.append(f"### {item.get('cve_id', '')}\n\n")
+            lines.append(f"- **标题**: {item.get('title', '')}\n")
+            lines.append(f"- **严重性**: {item.get('severity', 'N/A')}\n")
+            lines.append(f"- **CVSS评分**: {item.get('cvss_score', 'N/A')}\n")
+            lines.append(f"- **CVSS向量**: {item.get('cvss_vector', 'N/A')}\n")
+            lines.append(f"- **披露日期**: {item.get('disclosure_date', 'N/A')}\n")
+
+            cwe_ids = item.get('cwe_ids', [])
+            if cwe_ids:
+                lines.append(f"- **CWE**: {', '.join(cwe_ids)}\n")
+
+            lines.append(f"- **补丁状态**: {item.get('patch_status', 'N/A')}\n")
+            lines.append(f"- **利用状态**: {item.get('exploit_status', 'N/A')}\n")
+
+            description = item.get('description', '')
+            if description:
+                lines.append(f"\n**描述**:\n{description[:500]}{'...' if len(description) > 500 else ''}\n")
+
+            solution = item.get('solution', '')
+            if solution:
+                lines.append(f"\n**解决方案**:\n{solution[:300]}{'...' if len(solution) > 300 else ''}\n")
+
+            references = item.get('references', [])
+            if references:
+                lines.append(f"\n**参考链接**:\n")
+                for ref in references[:5]:
+                    lines.append(f"- {ref}\n")
+
+            lines.append("\n---\n\n")
+
+        return ''.join(lines)
     
     async def crawl_incremental(self, since_date: Optional[datetime] = None) -> List[CVEDetail]:
         """增量爬取（爬取指定日期之后的CVE）"""
@@ -953,17 +1225,23 @@ async def crawl_aliyun_cves(max_pages: int = 10,
                            start_page: int = 1,
                            headless: bool = True,
                            output_format: str = "json",
+                           output_type: str = "json",
                            split_by: str = "day",
                            cve_type: str = "",
-                           search_keyword: str = "") -> List[CVEDetail]:
+                           search_keyword: str = "",
+                           target_month: str = "",
+                           data_type: str = "") -> List[CVEDetail]:
     """便捷的CVE爬取函数"""
     config = CrawlConfig(
         max_pages=max_pages,
         headless=headless,
         output_format=output_format,
+        output_type=output_type,
         split_by=split_by,
         cve_type=cve_type,
-        search_keyword=search_keyword
+        search_keyword=search_keyword,
+        target_month=target_month,
+        data_type=data_type
     )
 
     async with AliyunCVECrawler(config) as crawler:
@@ -1005,28 +1283,117 @@ async def retry_aliyun_cves(output_format: str = "json",
 # 命令行接口
 if __name__ == "__main__":
     import argparse
+    import sys
 
-    parser = argparse.ArgumentParser(description="阿里云CVE爬虫")
+    parser = argparse.ArgumentParser(
+        description="阿里云CVE爬虫",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用示例:
+  # 基本爬取
+  python main.py --pages 10
+
+  # 按类型筛选
+  python main.py --type 数据库 --pages 5
+
+  # 按关键词搜索
+  python main.py --search oracle
+  python main.py -q mysql --pages 5
+
+  # 按月份爬取（自动翻页直到时间不满足）
+  python main.py --month 2026-07 --start-page 1 --pages 20
+  python main.py --data-type oracle --month 2026-07 --start-page 1 --pages 20
+
+  # 数据库类型爬取（支持逗号分割多类型）
+  python main.py --data-type oracle --pages 10
+  python main.py --data-type 达梦 --pages 10
+  python main.py --data-type oracle,mysql,达梦 --pages 10
+
+  # 输出格式
+  python main.py --data-type oracle -o json      # JSON输出（默认）
+  python main.py --data-type oracle -o md        # Markdown输出
+  python main.py --data-type oracle --format yaml # YAML内容格式
+
+  # 增量爬取
+  python main.py --incremental --days 7
+
+  # 重试失败记录
+  python main.py --retry
+        """
+    )
     parser.add_argument("--pages", type=int, default=5, help="爬取页数")
     parser.add_argument("--start-page", type=int, default=1, help="起始页")
     parser.add_argument("--incremental", action="store_true", help="增量爬取")
     parser.add_argument("--retry", action="store_true", help="重试失败的CVE")
     parser.add_argument("--days", type=int, default=7, help="增量爬取天数")
     parser.add_argument("--headless", action="store_true", default=True, help="无头模式")
-    parser.add_argument("--format", type=str, default="json", choices=["json", "yaml"], help="输出格式")
-    parser.add_argument("--split", type=str, default="day", choices=["day", "month"], help="文件拆分维度")
+    parser.add_argument("--format", type=str, default="json", choices=["json", "yaml"], help="内容格式 (json/yaml)")
+    parser.add_argument("--output", "-o", type=str, default="json", choices=["json", "md"], help="输出类型 (json/md)")
+    parser.add_argument("--split", type=str, default="day", choices=["day", "month"], help="文件拆分维度 (day/month)")
     parser.add_argument("--type", type=str, default="", help="CVE类型筛选，如: 数据库、操作系统、应用软件等")
     parser.add_argument("--search", "-q", type=str, default="", help="搜索关键词，如: oracle、mysql等")
+    parser.add_argument("--month", type=str, default="", help="目标月份(YYYY-MM)，按披露时间过滤")
+    parser.add_argument("--data-type", type=str, default="", help="数据库类型（逗号分割），如: oracle,mysql,达梦")
 
     args = parser.parse_args()
 
+    def print_examples():
+        print("""
+╔══════════════════════════════════════════════════════════════════╗
+║                    阿里云CVE爬虫 - 使用指南                      ║
+╠══════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║  基本爬取:                                                        ║
+║    python main.py --pages 10                    爬取前10页         ║
+║    python main.py --pages 5 --start-page 3       从第3页开始爬取     ║
+║                                                                  ║
+║  类型筛选:                                                        ║
+║    python main.py --type 数据库 --pages 10      数据库类型漏洞      ║
+║    python main.py --type 操作系统 --pages 10     操作系统类型漏洞    ║
+║                                                                  ║
+║  关键词搜索:                                                      ║
+║    python main.py --search oracle                搜索oracle漏洞    ║
+║    python main.py -q mysql                       搜索mysql漏洞    ║
+║                                                                  ║
+║  按月份爬取:                                                      ║
+║    python main.py --month 2026-07 --start-page 1 --pages 20        ║
+║    python main.py --data-type oracle --month 2026-07 --start-page 1 --pages 20  ║
+║                                                                  ║
+║  数据库类型:                                                      ║
+║    python main.py --data-type oracle --pages 10    Oracle漏洞        ║
+║    python main.py --data-type 达梦 --pages 10       达梦漏洞          ║
+║    python main.py --data-type oracle,mysql,达梦     多类型爬取        ║
+║                                                                  ║
+║  输出格式:                                                        ║
+║    python main.py --data-type oracle -o json       JSON输出(默认)     ║
+║    python main.py --data-type oracle -o md         Markdown输出      ║
+║    python main.py --data-type oracle --format yaml YAML格式         ║
+║                                                                  ║
+║  增量爬取:                                                        ║
+║    python main.py --incremental                  爬取最近7天       ║
+║    python main.py --incremental --days 3         爬取最近3天       ║
+║                                                                  ║
+║  重试失败:                                                        ║
+║    python main.py --retry                        重试失败记录      ║
+║                                                                  ║
+║  更多帮助:                                                        ║
+║    python main.py -h                             显示完整帮助      ║
+║    python main.py --help                                                 ║
+║                                                                  ║
+╚══════════════════════════════════════════════════════════════════╝
+        """)
+
     async def main():
+        # 无参数运行时显示使用示例
+        if len(sys.argv) == 1:
+            print_examples()
+            return
         if args.retry:
             cve_details = await retry_aliyun_cves(args.format, args.split, args.type)
         elif args.incremental:
             cve_details = await crawl_aliyun_cves_incremental(args.days, args.format, args.split, args.type, args.search)
         else:
-            cve_details = await crawl_aliyun_cves(args.pages, args.start_page, args.headless, args.format, args.split, args.type, args.search)
+            cve_details = await crawl_aliyun_cves(args.pages, args.start_page, args.headless, args.format, args.output, args.split, args.type, args.search, args.month, args.data_type)
 
         print(f"爬取完成，获得 {len(cve_details)} 个CVE")
 
