@@ -68,21 +68,19 @@ python main.py -q mysql --pages 5           # 搜索mysql相关漏洞
 # 按月份爬取（自动翻页直到披露时间不满足）
 python main.py --month 2026-07 --pages 20 --start-page 1
 
-# 数据库类型爬取
-python main.py --db-type oracle --pages 10   # 爬取oracle相关漏洞
-python main.py --db-type 达梦 --pages 10     # 爬取达梦相关漏洞
-python main.py --db-type 金仓 --pages 10     # 爬取金仓相关漏洞
-python main.py --db-type goldendb --pages 10 # 爬取goldendb相关漏洞
-python main.py --db-type 海山 --pages 10     # 爬取海山相关漏洞
+# 数据库类型爬取（支持逗号分割多类型）
+python main.py --data-type oracle --pages 10   # 爬取oracle相关漏洞
+python main.py --data-type 达梦 --pages 10     # 爬取达梦相关漏洞
+python main.py --data-type oracle,mysql,达梦   # 爬取多种类型漏洞
 
 # 输出格式
-python main.py --db-type oracle -o json     # 输出为JSON（默认）
-python main.py --db-type oracle -o md       # 输出为Markdown
-python main.py --db-type oracle --format yaml  # 内容格式为YAML
+python main.py --data-type oracle -o json     # 输出为JSON（默认）
+python main.py --data-type oracle -o md       # 输出为Markdown
+python main.py --data-type oracle --format yaml  # 内容格式为YAML
 
 # 文件拆分
-python main.py --db-type oracle --split day   # 按天拆分（默认）
-python main.py --db-type oracle --split month # 按月拆分
+python main.py --data-type oracle --split day   # 按天拆分（默认）
+python main.py --data-type oracle --split month # 按月拆分
 
 # 重试失败记录
 python main.py --retry                      # 重试之前失败的CVE
@@ -133,9 +131,15 @@ async def search_crawl():
     # 按数据库类型爬取
     cves = await crawl_aliyun_cves(
         max_pages=10,
-        db_type="oracle"
+        data_type="oracle"
     )
     print(f"找到 {len(cves)} 个oracle漏洞")
+
+    # 按多类型爬取
+    cves = await crawl_aliyun_cves(
+        max_pages=10,
+        data_type="oracle,mysql,达梦"
+    )
 
     # 按月份爬取
     cves = await crawl_aliyun_cves(
@@ -281,16 +285,7 @@ class CrawlConfig:
     cve_type: str = ""           # CVE类型筛选（如：数据库、操作系统）
     search_keyword: str = ""    # 搜索关键词（如：oracle）
     target_month: str = ""       # 目标月份(YYYY-MM)
-    db_type: str = ""           # 数据库类型
-
-    # 预定义数据库类型
-    DB_TYPES = {
-        "oracle": "oracle",
-        "达梦": "达梦",
-        "金仓": "金仓",
-        "goldendb": "goldendb",
-        "海山": "海山"
-    }
+    data_type: str = ""          # 数据库类型（逗号分割）
 
     # 浏览器配置
     headless: bool = True       # 是否无头模式
@@ -362,7 +357,7 @@ async def crawl_aliyun_cves(
     cve_type: str = "",
     search_keyword: str = "",
     target_month: str = "",
-    db_type: str = ""
+    data_type: str = ""
 ) -> List[CVEDetail]
 ```
 
@@ -378,7 +373,7 @@ async def crawl_aliyun_cves(
 - `cve_type`: CVE类型筛选
 - `search_keyword`: 搜索关键词
 - `target_month`: 目标月份(YYYY-MM)，按披露时间过滤
-- `db_type`: 数据库类型 (oracle/达梦/金仓/goldendb/海山)
+- `data_type`: 数据库类型（逗号分割），如 "oracle,mysql,达梦"
 
 #### crawl_aliyun_cves_incremental()
 
@@ -456,7 +451,7 @@ async def analyze_cves():
 
     # 显示最新的5个高危漏洞
     high_risk.sort(
-        key=lambda x: x.to_merged_dict().get('published_date', ''),
+        key=lambda x: x.to_merged_dict().get('disclosure_date', ''),
         reverse=True
     )
     print("\n最新高危漏洞:")
@@ -475,14 +470,14 @@ from main import crawl_aliyun_cves
 
 async def monitor_db_cves():
     """监控主流数据库漏洞"""
-    db_types = ["oracle", "达梦", "金仓", "goldendb", "海山"]
+    data_types = ["oracle", "达梦", "金仓", "goldendb", "海山"]
 
-    for db_type in db_types:
+    for data_type in data_types:
         cves = await crawl_aliyun_cves(
             max_pages=10,
-            db_type=db_type
+            data_type=data_type
         )
-        print(f"\n{db_type} 相关漏洞: {len(cves)} 个")
+        print(f"\n{data_type} 相关漏洞: {len(cves)} 个")
 
         # 统计严重漏洞
         critical = [
@@ -511,7 +506,7 @@ async def crawl_by_month():
         max_pages=20,
         start_page=1,
         target_month="2026-07",
-        db_type="oracle"
+        data_type="oracle"
     )
 
     print(f"2026年7月 oracle 漏洞: {len(cves)} 个")
@@ -669,10 +664,11 @@ config = CrawlConfig(
 
 ```
 data/aliyun_cve/
-├── cve_data_20260720.json      # 按天拆分的JSON数据
-├── cve_data_202607.md           # Markdown格式
-├── cve_data_2026-07.yaml       # YAML格式（按月拆分）
-├── failed_cves.json             # 失败记录（可使用 --retry 重试）
+├── cve_data_data-oracle_20260716.json      # 按数据类型和实际日期
+├── cve_data_data-oracle-mysql-达梦_20260716.json  # 多类型
+├── cve_data_data-oracle_month-202607_20260716.json  # 按月+类型
+├── cve_data_20260716.md                     # Markdown格式
+├── failed_cves.json                         # 失败记录（可使用 --retry 重试）
 └── ...
 ```
 
@@ -682,7 +678,7 @@ data/aliyun_cve/
 
 ```bash
 # 查看失败记录数量
-python main.py --retry --db-type oracle
+python main.py --retry --data-type oracle
 
 # 配合其他参数使用
 python main.py --retry --format yaml
@@ -702,6 +698,7 @@ python main.py --retry --format yaml
 | cvss_vector | CVSS向量 |
 | published_date | 披露日期（ISO格式） |
 | modified_date | 修改日期（ISO格式） |
+| disclosure_date | 披露日期（原始格式 YYYY-MM-DD） |
 | references | 参考链接列表 |
 | solution | 解决方案 |
 | cwe_ids | CWE编号列表 |
