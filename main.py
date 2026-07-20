@@ -1403,4 +1403,7 @@ if __name__ == "__main__":
             print(f"   描述: {cve.description[:100]}...")
             print(f"   严重性: {cve.to_merged_dict().get('severity', 'N/A')}")
 
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\n爬取自动中断")
