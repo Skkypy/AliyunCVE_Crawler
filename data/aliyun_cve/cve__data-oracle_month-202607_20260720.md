@@ -1,29 +1,29 @@
 # CVE漏洞列表
-- 生成时间: 20260720_141127
+- 生成时间: 20260720_144301
 - 总数量: 10
 
 ## 漏洞列表
 
 | CVE ID | 标题 | 严重性 | CVSS | 披露日期 | CWE | 补丁状态 | 利用状态 |
 |--------|------|--------|------|----------|-----|---------|----------|
-| AVD-2026-47703 | AdGuard 主页：DoQ 到 UDP 状态减少和源端口 Oracle (CVE-2026-477... | CRITICAL | 0.0 | 2026-07-16 | N/A |  |  |
-| AVD-2026-15747 | Perl 9.48 之前的 Mojolicious 版本 4.59 向 BREACH 压缩预言机公开... | HIGH | 0.0 | 2026-07-15 | N/A |  |  |
-| AVD-2026-56296 | Cap-go transfer_app 应用 ID 枚举漏洞(CVE-2026-56296) | MEDIUM | 0.0 | 2026-07-11 | N/A |  |  |
-| AVD-2026-44332 | 中危 Fiber：通过 BasicAuth 默认授权程序中的 Timing Oracle 进行用户名... | MEDIUM | 0.0 | 2026-07-09 | N/A |  |  |
-| AVD-2026-41516 | OP-TEE：Hisilicon HPRE PKCS#1 v1.5 解密填充 Oracle (CVE... | MEDIUM | 0.0 | 2026-07-07 | N/A |  |  |
-| AVD-2026-41515 | OP-TEE：NXP CAAM 驱动程序中的 RSA-OAEP 填充 oracle 可实现明文恢复 ... | MEDIUM | 0.0 | 2026-07-07 | N/A |  |  |
-| AVD-2026-41514 | OP-TEE：海思 HPRE 驱动程序中的 RSA-OAEP 填充 oracle 可实现明文恢复 (... | MEDIUM | 0.0 | 2026-07-07 | N/A |  |  |
-| AVD-2026-53422 | SFTP REALPATH 路径存在 Oracle 允许在配置的根之外进行文件系统枚举 (CVE-2... | MEDIUM | 0.0 | 2026-07-03 | N/A |  |  |
-| AVD-2026-56327 | Capgo public.invite_user_to_org 信息泄露漏洞(CVE-2026-56... | MEDIUM | 0.0 | 2026-07-01 | N/A |  |  |
-| AVD-2026-56300 | Capgo - 通过 RPC 函数未经身份验证的 API 密钥有效性和权限 Oracle (CVE-... | MEDIUM | 0.0 | 2026-07-01 | N/A |  |  |
+| AVD-2026-47703 | AdGuard 主页：DoQ 到 UDP 状态减少和源端口 Oracle (CVE-2026-477... | MEDIUM | 6.3 | 2026-07-16 | N/A |  |  |
+| AVD-2026-15747 | Perl 9.48 之前的 Mojolicious 版本 4.59 向 BREACH 压缩预言机公开... | CRITICAL | 9.1 | 2026-07-15 | N/A |  |  |
+| AVD-2026-56296 | Cap-go transfer_app 应用 ID 枚举漏洞(CVE-2026-56296) | MEDIUM | 6.9 | 2026-07-11 | N/A |  |  |
+| AVD-2026-44332 | 中危 Fiber：通过 BasicAuth 默认授权程序中的 Timing Oracle 进行用户名... | MEDIUM | 4.8 | 2026-07-09 | N/A |  |  |
+| AVD-2026-41516 | OP-TEE：Hisilicon HPRE PKCS#1 v1.5 解密填充 Oracle (CVE... | LOW | 2.5 | 2026-07-07 | N/A |  |  |
+| AVD-2026-41515 | OP-TEE：NXP CAAM 驱动程序中的 RSA-OAEP 填充 oracle 可实现明文恢复 ... | LOW | 2.5 | 2026-07-07 | N/A |  |  |
+| AVD-2026-41514 | OP-TEE：海思 HPRE 驱动程序中的 RSA-OAEP 填充 oracle 可实现明文恢复 (... | LOW | 2.5 | 2026-07-07 | N/A |  |  |
+| AVD-2026-53422 | SFTP REALPATH 路径存在 Oracle 允许在配置的根之外进行文件系统枚举 (CVE-2... | LOW | 2.3 | 2026-07-03 | N/A |  |  |
+| AVD-2026-56327 | Capgo public.invite_user_to_org 信息泄露漏洞(CVE-2026-56... | MEDIUM | 5.3 | 2026-07-01 | N/A |  |  |
+| AVD-2026-56300 | Capgo - 通过 RPC 函数未经身份验证的 API 密钥有效性和权限 Oracle (CVE-... | HIGH | 7.5 | 2026-07-01 | N/A |  |  |
 
 ## 漏洞详情
 
 ### AVD-2026-47703
 
 - **标题**: AdGuard 主页：DoQ 到 UDP 状态减少和源端口 Oracle (CVE-2026-47703)
-- **严重性**: CRITICAL
-- **CVSS评分**: 0.0
+- **严重性**: MEDIUM
+- **CVSS评分**: 6.3
 - **CVSS向量**: 
 - **披露日期**: 2026-07-16
 - **补丁状态**: 
@@ -43,8 +43,8 @@ AdGuard Home is a network-wide software for blocking ads and tracking. Prior to 
 ### AVD-2026-15747
 
 - **标题**: Perl 9.48 之前的 Mojolicious 版本 4.59 向 BREACH 压缩预言机公开了会话 CSRF 令牌的稳定表示形式 (CVE-2026-15747)
-- **严重性**: HIGH
-- **CVSS评分**: 0.0
+- **严重性**: CRITICAL
+- **CVSS评分**: 9.1
 - **CVSS向量**: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N
 - **披露日期**: 2026-07-15
 - **补丁状态**: 
@@ -67,7 +67,7 @@ Mojolicious versions from 4.59 before 9.48 for Perl expose a stable representati
 
 - **标题**: Cap-go transfer_app 应用 ID 枚举漏洞(CVE-2026-56296)
 - **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **CVSS评分**: 6.9
 - **CVSS向量**: 
 - **披露日期**: 2026-07-11
 - **补丁状态**: 
@@ -89,7 +89,7 @@ Cap-go 是基于 Supabase/Postgres 与 Capacitor 的开源移动应用热更新�
 
 - **标题**: 中危 Fiber：通过 BasicAuth 默认授权程序中的 Timing Oracle 进行用户名枚举 (CVE-2026-44332)
 - **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **CVSS评分**: 4.8
 - **CVSS向量**: 
 - **披露日期**: 2026-07-09
 - **补丁状态**: 
@@ -112,8 +112,8 @@ Fiber is an Express inspired web framework written in Go. Prior to 3.3.0, the de
 ### AVD-2026-41516
 
 - **标题**: OP-TEE：Hisilicon HPRE PKCS#1 v1.5 解密填充 Oracle (CVE-2026-41516)
-- **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **严重性**: LOW
+- **CVSS评分**: 2.5
 - **CVSS向量**: CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N
 - **披露日期**: 2026-07-07
 - **补丁状态**: 
@@ -133,8 +133,8 @@ OP-TEE is a Trusted Execution Environment (TEE) designed as companion to a non-s
 ### AVD-2026-41515
 
 - **标题**: OP-TEE：NXP CAAM 驱动程序中的 RSA-OAEP 填充 oracle 可实现明文恢复 (CVE-2026-41515)
-- **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **严重性**: LOW
+- **CVSS评分**: 2.5
 - **CVSS向量**: CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N
 - **披露日期**: 2026-07-07
 - **补丁状态**: 
@@ -154,8 +154,8 @@ OP-TEE is a Trusted Execution Environment (TEE) designed as companion to a non-s
 ### AVD-2026-41514
 
 - **标题**: OP-TEE：海思 HPRE 驱动程序中的 RSA-OAEP 填充 oracle 可实现明文恢复 (CVE-2026-41514)
-- **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **严重性**: LOW
+- **CVSS评分**: 2.5
 - **CVSS向量**: CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:N/A:N
 - **披露日期**: 2026-07-07
 - **补丁状态**: 
@@ -175,8 +175,8 @@ OP-TEE is a Trusted Execution Environment (TEE) designed as companion to a non-s
 ### AVD-2026-53422
 
 - **标题**: SFTP REALPATH 路径存在 Oracle 允许在配置的根之外进行文件系统枚举 (CVE-2026-53422)
-- **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **严重性**: LOW
+- **CVSS评分**: 2.3
 - **CVSS向量**: 
 - **披露日期**: 2026-07-03
 - **补丁状态**: 
@@ -201,7 +201,7 @@ Observable Response Discrepancy vulnerability in Erlang OTP ssh (ssh_sftpd modul
 
 - **标题**: Capgo public.invite_user_to_org 信息泄露漏洞(CVE-2026-56327)
 - **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **CVSS评分**: 5.3
 - **CVSS向量**: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N
 - **披露日期**: 2026-07-01
 - **补丁状态**: 
@@ -222,8 +222,8 @@ Capgo 是开源的 Capacitor 应用即时更新和原生构建管理平台,提�
 ### AVD-2026-56300
 
 - **标题**: Capgo - 通过 RPC 函数未经身份验证的 API 密钥有效性和权限 Oracle (CVE-2026-56300)
-- **严重性**: MEDIUM
-- **CVSS评分**: 0.0
+- **严重性**: HIGH
+- **CVSS评分**: 7.5
 - **CVSS向量**: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N
 - **披露日期**: 2026-07-01
 - **补丁状态**: 
