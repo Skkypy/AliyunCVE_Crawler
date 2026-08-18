@@ -1,0 +1,150 @@
+{
+  "timestamp": "20260818_150406",
+  "count": 8,
+  "data": [
+    {
+      "cve_id": "AVD-2024-1767351",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在拒绝服务漏洞（CNVD-2024-47323）",
+      "description": "KingbaseES是北京人大金仓信息技术股份有限公司自主研制开发的具有自主知识产权的通用关系型数据库管理系统。北京人大金仓信息技术股份有限公司KingbaseES存在拒绝服务漏洞，攻击者可利用该漏洞导致程序崩溃。",
+      "severity": "MEDIUM",
+      "cvss_score": 4.9,
+      "cvss_vector": "",
+      "published_date": "2024-12-06T00:00:00",
+      "modified_date": "2024-12-06T00:00:00",
+      "disclosure_date": "2024-12-06",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2024-47323"
+      ],
+      "solution": "厂商尚未提供漏洞修补方案，请关注厂商主页及时更新：https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-699101",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在信息泄露漏洞（CNVD-2020-61962）",
+      "description": "KingBaseES是北京人大金仓信息技术股份有限公司研发的具有自主知识产权的国产大型通用数据库管理系统（DBMS）。北京人大金仓信息技术股份有限公司KingbaseES存在信息泄露漏洞。攻击者可利用漏洞获取敏感信息。",
+      "severity": "MEDIUM",
+      "cvss_score": 4.0,
+      "cvss_vector": "",
+      "published_date": "2020-10-26T00:00:00",
+      "modified_date": "2020-10-26T00:00:00",
+      "disclosure_date": "2020-10-26",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-61962"
+      ],
+      "solution": "厂商尚未提供漏洞修补方案，请关注厂商主页及时更新：https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-699100",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在信息泄露漏洞（CNVD-2020-61961）",
+      "description": "KingBaseES是北京人大金仓信息技术股份有限公司研发的具有自主知识产权的国产大型通用数据库管理系统（DBMS）。北京人大金仓信息技术股份有限公司KingbaseES存在信息泄露漏洞。攻击者可利用漏洞获取敏感信息。",
+      "severity": "MEDIUM",
+      "cvss_score": 4.0,
+      "cvss_vector": "",
+      "published_date": "2020-10-26T00:00:00",
+      "modified_date": "2020-10-26T00:00:00",
+      "disclosure_date": "2020-10-26",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-61961"
+      ],
+      "solution": "厂商尚未提供漏洞修补方案，请关注厂商主页及时更新：https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-699099",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在未授权访问漏洞（CNVD-2020-61960）",
+      "description": "KingBaseES是北京人大金仓信息技术股份有限公司研发的具有自主知识产权的国产大型通用数据库管理系统（DBMS）。北京人大金仓信息技术股份有限公司KingbaseES存在未授权访问漏洞。攻击者可利用漏洞获取数据库等敏感信息。",
+      "severity": "MEDIUM",
+      "cvss_score": 4.0,
+      "cvss_vector": "",
+      "published_date": "2020-10-26T00:00:00",
+      "modified_date": "2020-10-26T00:00:00",
+      "disclosure_date": "2020-10-26",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-61960"
+      ],
+      "solution": "厂商尚未提供漏洞修补方案，请关注厂商主页及时更新：https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-699098",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在未授权访问漏洞（CNVD-2020-61959）",
+      "description": "KingBaseEs是北京人大金仓信息技术股份有限公司研发的具有自主知识产权的国产大型通用数据库管理系统（DBMS）。北京人大金仓信息技术股份有限公司KingbaseES存在未授权访问漏洞。攻击者可利用漏洞获取敏感信息。",
+      "severity": "MEDIUM",
+      "cvss_score": 4.0,
+      "cvss_vector": "",
+      "published_date": "2020-10-26T00:00:00",
+      "modified_date": "2020-10-26T00:00:00",
+      "disclosure_date": "2020-10-26",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-61959"
+      ],
+      "solution": "厂商尚未提供漏洞修补方案，请关注厂商主页及时更新：https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-899579",
+      "title": "北京人大金仓信息技术股份有限公司 KingbaseES V8 R3存在信息泄露漏洞（CNVD-2020-57231）",
+      "description": "金仓数据库管理系统KingbaseES（简称：金仓数据库或KingbaseES）是北京人大金仓信息技术股份有限公司自主研制开发的具有自主知识产权的通用关系型数据库管理系统。 北京人大金仓信息技术股份有限公司KingbaseES存在信息泄露漏洞。攻击者可利用漏洞获取敏感信息。",
+      "severity": "MEDIUM",
+      "cvss_score": 0.0,
+      "cvss_vector": "",
+      "published_date": "2020-10-19T00:00:00",
+      "modified_date": "2020-10-19T00:00:00",
+      "disclosure_date": "2020-10-19",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-57231"
+      ],
+      "solution": "厂商尚未提供漏洞修补方案，请关注厂商主页及时更新： https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-900037",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在拒绝服务漏洞（CNVD-2020-48684）",
+      "description": "KingbaseES是面向事务处理类、兼顾分析类应用领域的新型数据库产品。 北京人大金仓信息技术股份有限公司KingbaseES存在拒绝服务漏洞，攻击者可利用该漏洞导致拒绝服务。",
+      "severity": "MEDIUM",
+      "cvss_score": 0.0,
+      "cvss_vector": "",
+      "published_date": "2020-09-10T00:00:00",
+      "modified_date": "2020-09-10T00:00:00",
+      "disclosure_date": "2020-09-10",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-48684"
+      ],
+      "solution": "目前厂商已提供相关漏洞补丁链接，请关注厂商主页随时更新： https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2021-900082",
+      "title": "北京人大金仓信息技术股份有限公司KingbaseES存在拒绝服务漏洞（CNVD-2020-48685）",
+      "description": "KingbaseES V8R3是面向事务处理类、兼顾分析类应用领域的新型数据库产品。 北京人大金仓信息技术股份有限公司KingbaseES存在拒绝服务漏洞，攻击者可利用该漏洞造成拒绝服务。",
+      "severity": "MEDIUM",
+      "cvss_score": 0.0,
+      "cvss_vector": "",
+      "published_date": "2020-09-07T00:00:00",
+      "modified_date": "2020-09-07T00:00:00",
+      "disclosure_date": "2020-09-07",
+      "references": [
+        "https://www.cnvd.org.cn/flaw/show/CNVD-2020-48685"
+      ],
+      "solution": "目前厂商尚未提供相关漏洞补丁链接，请关注厂商主页随时更新： https://www.kingbase.com.cn/",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    }
+  ]
+}
