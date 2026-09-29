@@ -1,0 +1,2742 @@
+{
+  "timestamp": "20260929_143257",
+  "count": 150,
+  "data": [
+    {
+      "cve_id": "AVD-2026-96282",
+      "title": "Flatpak扩展路径穿越漏洞(CVE-2026-96282)",
+      "description": "Flatpak 是 freedesktop.org 维护的开源应用沙箱与分发框架，用于在 Linux 上隔离安装并运行桌面应用。 受影响版本中，应用启动时会在宿主侧读取扩展元数据并访问扩展 files 目录。flatpak_run_add_extension_args 通过会跟随符号链接的路径接口检查 .ref 锁文件并遍历 merge_dirs，扩展开发者可在 files 目录中放置指向任意宿主路径的符号链接，从而判断路径是否存在，并把宿主目录中的文件名以符号链接形式暴露给沙箱内应用。add_extension 解析 directory、subdir_suffix、add_ld_path 与 merge_dirs 时未拒绝绝对路径或 .. 组件，扩展内容还可能被挂载到沙箱内非预期位置。 修复版本中通过在 add_extension 中增加 relative_path_has_no_traversal 校验并忽略含路径穿越的扩展元数据，同时把 flatpak_run_add_extension_args 对 .ref 与 merge_dirs 的访问改为带 GLNX_CHASE_RESOLVE_BENEATH 的 glnx_chaseat，将解析限制在扩展 files 目录之内，阻断宿主路径探测和非预期挂载。",
+      "severity": "LOW",
+      "cvss_score": 3.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:N/I:L/A:N",
+      "published_date": "2026-09-28T00:00:00",
+      "modified_date": "2026-09-28T00:00:00",
+      "disclosure_date": "2026-09-28",
+      "references": [
+        "https://access.redhat.com/security/cve/CVE-2026-96282",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2539422",
+        "https://github.com/flatpak/flatpak/security/advisories/GHSA-w69g-9x8j-7p8f"
+      ],
+      "solution": "将组件 flatpak 升级至 1.18.1 及以上版本",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-84721",
+      "title": "AWX 邮件通知 SSRF 漏洞(CVE-2026-84721)",
+      "description": "AWX 是 Red Hat 开源的自动化编排控制平面（GitHub 项目 ansible/awx），其商业发行形态为 Ansible Automation Platform 2 中的 automation-controller，提供 Web UI、REST API 以及作业与工作流事件的通知体系，可向邮件、webhook、IRC 等渠道发送通知。 受影响版本中，邮件通知后端 awx/main/notifications/email_backend.py 的 CustomEmailBackend 直接继承 Django SMTP EmailBackend，未覆写 open() 与 send_messages()，通知模板 notification_configuration 中用户可控的 host 与 port 被直接传给 smtplib.SMTP() 建立原始 TCP 连接，且无任何私网、回环、链路本地或保留地址校验；具备组织 notification-admin（notification_admin_role）权限的认证用户可创建或修改指向任意内网地址的邮件通知模板，并经 /api/v2/notification_templates/<id>/test/ 触发控制器任务进程发起连接，连接异常文本被原样写入可通过 API 回读的 Notification.error 字段，形成开放、关闭、过滤三态的内网端口扫描预言机，覆盖控制面所在集群网络（含集群内 Kubernetes API、Redis、PostgreSQL、receptor）；当共享组织模板中保存了 SMTP 密码时，改写 host 还会使该凭据被发送至攻击者控制的服务器。 修复版本中通过，Red Hat 已说明正确的修复方向是对所有通知后端统一校验连接目标并拒绝私网、回环、链路本地与保留地址，最好集中在模板发送路径实现；该类校验当前仅存在于 2.7 分支的 url_validation 模块且只覆盖 webhook、grafana、mattermost、rocketchat 等 HTTP 类后端，邮件与 IRC 后端尚未纳入，建议临时收紧 notification_admin_role 角色委派、审计既有邮件通知模板目标地址，并以网络策略限制控制器任务进程对集群内网的出站访问。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.4,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:L/A:N",
+      "published_date": "2026-09-24T00:00:00",
+      "modified_date": "2026-09-24T00:00:00",
+      "disclosure_date": "2026-09-24",
+      "references": [
+        "https://access.redhat.com/errata/RHSA-2026:71177",
+        "https://access.redhat.com/security/cve/CVE-2026-84721",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2527220"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-84720",
+      "title": "automation-controller敏感信息泄露漏洞(CVE-2026-84720)",
+      "description": "Red Hat Ansible Automation Platform 的 automation-controller 是该自动化平台的控制平面组件，上游对应开源项目 AWX，通过 REST API 提供 Playbook 作业调度、工作流编排与凭证管理。 受影响版本中，工作流节点模型 WorkflowJobNode 的 ancestor_artifacts 数据库列保存工作流节点间传播的原始 set_stats 作业产物合并结果，Playbook 作者标记为 no_log 的敏感值写入该列时未被遮蔽；该字段未使用 prevent_search() 包装，REST 过滤后端因此接受针对它的任意 ORM 关联查找，而 API 序列化器并不输出该字段。已认证用户可通过工作流相关列表的过滤参数，或经由默认全局可读的 credential-types 列表接口以正则条件跨关系查询该列，利用返回结果数量作为布尔/计数预言机逐字符恢复 no_log 敏感值，并可跨组织读取。 修复版本中通过将 ancestor_artifacts 纳入 prevent_search() 过滤限制，使 REST 过滤后端拒绝针对该列的任意字段查找，切断结果计数预言机；官方修复版本尚未公布，修复发布前可限制不受信任账户访问自动化控制器 API，并关注 Red Hat 官方公告及时升级。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+      "published_date": "2026-09-24T00:00:00",
+      "modified_date": "2026-09-24T00:00:00",
+      "disclosure_date": "2026-09-24",
+      "references": [
+        "https://access.redhat.com/errata/RHSA-2026:71113",
+        "https://access.redhat.com/errata/RHSA-2026:71114",
+        "https://access.redhat.com/errata/RHSA-2026:71177",
+        "https://access.redhat.com/errata/RHSA-2026:71179",
+        "https://access.redhat.com/security/cve/CVE-2026-84720",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2527214"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-84717",
+      "title": "automation-controller 响应差异枚举漏洞(CVE-2026-84717)",
+      "description": "automation-controller 是 Red Hat Ansible Automation Platform 的控制平面组件，上游开源项目为 ansible/awx，基于 Python 与 Django 实现，用于编排和管理自动化作业，内置 GitHub、GitLab 与 Bitbucket Data Center 三类免认证 Webhook 接收端点。 受影响版本中，WebhookReceiverBase.post 在校验签名前先调用 get_object()，按主键查找 webhook_service 为 bitbucket_dc 且 webhook_key 非空的作业模板或工作流作业模板，未命中时抛出 PermissionDenied 并返回 HTTP 403；BitbucketDcWebhookReceiver.must_check_signature() 对 X-Event-Key 为 diagnostics:ping 的事件返回 False，跳过基于 webhook_key 的 HMAC 签名校验，请求随后被 is_ignored_request 判定为忽略并返回 HTTP 200。未认证攻击者无需掌握 webhook_key，向 /api/v2/job_templates/<id>/bitbucket_dc/ 或 /api/v2/workflow_job_templates/<id>/bitbucket_dc/ 发送 diagnostics:ping 请求，可依据 200 与 403 的响应差异逐个枚举哪些模板 ID 配置了 Bitbucket Data Center webhook。 修复版本中通过将未签名 diagnostics:ping 的处理与目标模板查询解耦来切断该响应差异：把 ping/is_ignored_request 短路逻辑移动到 get_object() 之前执行，或要求 ping 事件同样携带有效 X-Hub-Signature，使未认证请求的响应不再随模板配置状态变化。截至 2026-09-24，Red Hat 尚未公布修复版本，上游 ansible/awx devel 分支仍包含存在缺陷的代码。",
+      "severity": "MEDIUM",
+      "cvss_score": 5.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "published_date": "2026-09-24T00:00:00",
+      "modified_date": "2026-09-24T00:00:00",
+      "disclosure_date": "2026-09-24",
+      "references": [
+        "https://access.redhat.com/errata/RHSA-2026:71113",
+        "https://access.redhat.com/errata/RHSA-2026:71114",
+        "https://access.redhat.com/errata/RHSA-2026:71177",
+        "https://access.redhat.com/errata/RHSA-2026:71179",
+        "https://access.redhat.com/security/cve/CVE-2026-84717",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2527210"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-84713",
+      "title": "自动化控制器通知收件人信息泄露(CVE-2026-84713)",
+      "description": "Automation Controller 是 Red Hat Ansible Automation Platform 的控制平面组件，上游对应开源项目 ansible/awx，使用 Python/Django 开发，用于编排自动化任务、管理凭据，并通过通知子系统向 Slack、PagerDuty、Mattermost、RocketChat、Webhook 等渠道推送作业事件通知。 受影响版本中，NotificationTemplate.notification_configuration 通过 prevent_search 阻止 API 过滤触达，而通知发送时 generate_notification 把含密收件人值（如 PagerDuty service key、Slack/Mattermost/RocketChat/Webhook 内嵌 bearer token 的 URL）以明文写入缺少同款防护的 Notification.recipients 字段；credential-types 列表接口对任意已认证用户开放，django-ansible-base 的 FieldLookupBackend 在解析 credentials__organization__notification_templates__notifications__recipients__istartswith 之类的关联过滤时不执行逐跳授权，低权限用户能以返回结果计数为布尔预言机，逐字符、跨组织恢复其他租户通知中的机密收件人值，仅影响机密性。 修复版本中通过，可跟踪 Red Hat 安全公告的修复进展；临时防护包括限制 credential-types 列表接口的关联过滤能力，为 Notification.recipients、subject、error 补充与 notification_configuration 一致的过滤防护，并审计低权限账户针对通知关联链的异常过滤查询，避免计数差异间接泄露收件人内容。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+      "published_date": "2026-09-24T00:00:00",
+      "modified_date": "2026-09-24T00:00:00",
+      "disclosure_date": "2026-09-24",
+      "references": [
+        "https://access.redhat.com/errata/RHSA-2026:71177",
+        "https://access.redhat.com/security/cve/CVE-2026-84713",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2527197"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-71462",
+      "title": "AWX路径存在性信息泄露漏洞(CVE-2026-71462)",
+      "description": "AWX 是 Red Hat Ansible Automation Platform 中自动化控制器 automation-controller 的上游开源项目，基于 Django 与 Django REST Framework 为 Ansible 自动化提供 Web 控制台与 REST API。 受影响版本中，awx/conf/fields.py 的 StringListPathField.to_internal_value() 在校验用户提交的 CUSTOM_VENV_PATHS 设置时，对列表中每个任意路径调用 os.path.exists()，路径取值不受白名单或前缀限制；路径存在时请求返回 HTTP 200，不存在时触发 path_error 校验失败返回 HTTP 400，超级用户通过 PUT /api/v2/settings/system/ 的响应差异可探测 controller-web 容器内任意绝对路径是否存在，进而确认 /etc/tower/SECRET_KEY、Kubernetes ServiceAccount 令牌、receptor 套接字与 ConfigMap 挂载点等敏感路径，该问题在 ansiblecloud.com 等租户管理员并非宿主机管理员的受管 AAP 多租户环境中影响最为明显。 修复版本中通过官方安全更新消除该校验环节的路径存在性探测与响应差异后，该信息泄露通道将被切断；截至 2026-09-24，官方尚未发布修复版本，Red Hat Bugzilla 2512371 处于 NEW 状态且未填写 Fixed In Version，上游 devel 分支仍保留该逻辑，建议在修复发布前按缓解措施处理。",
+      "severity": "MEDIUM",
+      "cvss_score": 4.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:L/I:N/A:N",
+      "published_date": "2026-09-24T00:00:00",
+      "modified_date": "2026-09-24T00:00:00",
+      "disclosure_date": "2026-09-24",
+      "references": [
+        "https://access.redhat.com/errata/RHSA-2026:71113",
+        "https://access.redhat.com/errata/RHSA-2026:71114",
+        "https://access.redhat.com/errata/RHSA-2026:71177",
+        "https://access.redhat.com/errata/RHSA-2026:71179",
+        "https://access.redhat.com/security/cve/CVE-2026-71462",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2512371"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-71458",
+      "title": "AAP 跨租户资源枚举漏洞(CVE-2026-71458)",
+      "description": "Red Hat Ansible Automation Platform（AAP）是 Red Hat 面向企业的自动化编排平台，其核心组件 automation-controller 基于开源项目 AWX（GitHub 开源，Python/Django 与 Django REST Framework 实现）构建，对外提供 REST API 管理组织、凭证、清单、主机与作业模板等自动化资源。 受影响版本中，命名 URL 解析中间件 URLModificationMiddleware 在 RBAC 授权前使用未过滤的 Model.objects 按名称检索资源，并把命名 URL 改写为主键 URL，未命中时回退为 pk=0；awx/api/views/__init__.py 中 api_exception_handler 的 403→404 垫片只把 403 响应改写为固定 detail「Not found.」，pk=0 未命中路径保留 Django 默认 404 detail「No <Model> matches the given query.」。持有普通账户的攻击者对比两类 404 响应体差异，能够跨租户判定组织、凭证、清单、主机等命名资源在整个平台上是否真实存在，进而枚举内部主机名等命名信息。 修复版本中通过，Red Hat 尚未公布包含修复的 automation-controller 版本（Bugzilla 2512367 截至 2026-09-24 处于 NEW 状态），建议限制低权限账户访问 /api/v2/ 命名 URL 端点、收窄 automation-controller API 的网络暴露面并监控批量探测行为进行缓解，待官方 errata 发布后升级至包含修复的版本。",
+      "severity": "MEDIUM",
+      "cvss_score": 5.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:L/I:N/A:N",
+      "published_date": "2026-09-24T00:00:00",
+      "modified_date": "2026-09-24T00:00:00",
+      "disclosure_date": "2026-09-24",
+      "references": [
+        "https://access.redhat.com/errata/RHSA-2026:71113",
+        "https://access.redhat.com/errata/RHSA-2026:71114",
+        "https://access.redhat.com/errata/RHSA-2026:71177",
+        "https://access.redhat.com/errata/RHSA-2026:71179",
+        "https://access.redhat.com/security/cve/CVE-2026-71458",
+        "https://bugzilla.redhat.com/show_bug.cgi?id=2512367"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-88010",
+      "title": "Traefik用户名枚举漏洞(CVE-2026-88010)",
+      "description": "Traefik 是开源 HTTP 反向代理和负载均衡器，BasicAuth 中间件用于校验 HTTP 基本认证凭据。 受影响版本中，basicAuth.checkPassword 使用提交口令与已存储密钥构造 singleflight 去重键。用户名不存在时密钥为空，相同口令的并发请求被合并为一次哈希；用户名已配置时密钥不同，探测请求单独计算哈希。未认证攻击者在并发窗口内比较响应延迟，可以判断用户名是否存在。顺序请求仍执行等成本的占位哈希，该问题不泄露凭据，也不绕过认证。 修复版本中通过 singleflightKey 仅按用户名长度、用户名和口令生成去重键，checkPassword 不再把已存储密钥纳入合并条件，并发校验不再因用户名缺失而走快速路径，从而消除该计时差异。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.3,
+      "cvss_vector": "",
+      "published_date": "2026-09-23T00:00:00",
+      "modified_date": "2026-09-23T00:00:00",
+      "disclosure_date": "2026-09-23",
+      "references": [
+        "https://github.com/traefik/traefik/commit/ddc1bf4660b85fd61fafdd821eb8216fb1a0b130",
+        "https://github.com/traefik/traefik/pull/13816",
+        "https://github.com/traefik/traefik/releases/tag/v3.7.13",
+        "https://github.com/traefik/traefik/security/advisories/GHSA-8fcf-v89g-xpg6"
+      ],
+      "solution": "将组件 github.com/traefik/traefik/v3 升级至 3.7.13 及以上版本 将组件 Traefik 升级至 v3.7.13 及以上版本",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-95703",
+      "title": "MISP组织Logo探测漏洞(CVE-2026-95703)",
+      "description": "MISP（Malware Information Sharing Platform）是开源威胁情报共享平台，用于在组织之间收集、存储和交换安全事件与指标。 受影响版本中，站点管理员经 OrganisationsController 的 admin_add 或 admin_edit 保存组织后，afterSave 调用私有方法 __uploadLogo。该方法读取请求字段 Organisation.logo.tmp_name，并在 is_uploaded_file 确认其来自真实 PHP 上传之前，先执行 file_exists、mime_content_type 与 exif_imagetype。路径不存在时抛出 Invalid file，图片类型不匹配时返回另一类校验错误，从而形成针对服务器文件系统的文件存在性与图片类型预言机。该缺陷不能读取文件内容，也不能执行代码或修改文件。 修复版本中通过在任何文件系统探测之前拒绝空 tmp_name 以及未通过 is_uploaded_file 的路径，使伪造上传路径直接返回失败，不再因路径是否存在或图片类型不同而返回可区分的探测结果。",
+      "severity": "MEDIUM",
+      "cvss_score": 5.1,
+      "cvss_vector": "",
+      "published_date": "2026-09-22T00:00:00",
+      "modified_date": "2026-09-22T00:00:00",
+      "disclosure_date": "2026-09-22",
+      "references": [
+        "https://github.com/MISP/MISP/commit/12eaadc9e"
+      ],
+      "solution": "将组件 misp 升级至 2.5.47 及以上版本",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-77582",
+      "title": "Tinyauth用户名枚举(CVE-2026-77582)",
+      "description": "Tinyauth 是采用 AGPL-3.0 许可的开源认证与授权服务器，用于为自托管应用提供登录、访问控制与 OpenID Connect 身份认证。 受影响版本中，POST /api/user/login 对应的 loginHandler 在 SearchUser 返回 ErrUserNotFound 时直接返回 HTTP 401，不进行口令哈希比较；已存在的本地用户会进入 CheckUserPassword，并由 bcrypt.CompareHashAndPassword 完成校验。ContextMiddleware 的 basicAuth 在用户不存在时同样提前返回。远程未认证攻击者通过比较这两类登录响应耗时，可以判断本地用户名是否存在。 修复版本中通过在服务启动时生成 bcrypt dummy 哈希，并在上述用户不存在路径调用 DummyPasswordCheck，对提交口令执行 bcrypt.CompareHashAndPassword，使不存在用户与存在用户都承担 bcrypt 计算，消除可远程观测的用户名存在性时差。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.9,
+      "cvss_vector": "",
+      "published_date": "2026-09-22T00:00:00",
+      "modified_date": "2026-09-22T00:00:00",
+      "disclosure_date": "2026-09-22",
+      "references": [
+        "https://github.com/tinyauthapp/tinyauth/commit/c22925c2fba981875d0a2b09dd3ee41c0ae4c310",
+        "https://github.com/tinyauthapp/tinyauth/pull/1004",
+        "https://github.com/tinyauthapp/tinyauth/releases/tag/v5.1.0",
+        "https://github.com/tinyauthapp/tinyauth/security/advisories/GHSA-456h-ww26-f758"
+      ],
+      "solution": "将组件 github.com/tinyauthapp/tinyauth 升级至 5.1.0 及以上版本",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-86338",
+      "title": "Ash字段策略信息泄露(CVE-2026-86338)",
+      "description": "Ash 是开源 Elixir 应用框架，通过 Hex 分发，用于以声明式资源模型提供查询、变更与授权能力。 受影响版本中，field_policies 承诺在过滤器引用不可见字段时将其替换为求值为 nil 的表达式。该替换只作用于 Ash.Resource.Attribute、Ash.Resource.Aggregate 与 Ash.Resource.Calculation；用户输入过滤器引用计算或聚合时携带 Ash.Query.Calculation / Ash.Query.Aggregate，Ash.Policy.Authorizer.do_replace_ref/2 未匹配这些结构，过滤器按真实值运行。被策略禁止的计算或聚合仍可通过 filter(secret_calc == \"x\") 或 filter(comment_count == n) 根据行是否命中逐次探测取值。 修复版本中通过为 Ash.Query.Calculation 与 Ash.Query.Aggregate 增加与属性相同的引用替换，使禁止字段在过滤器中同样被置为求值为 nil 的表达式，切断基于过滤命中与否的信息泄露。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.0,
+      "cvss_vector": "",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://cna.erlef.org/cves/CVE-2026-86338.html",
+        "https://github.com/ash-project/ash/commit/0b6d93c7c4637280b46ae66ea1d2eaf013701238",
+        "https://github.com/ash-project/ash/commit/b3d4503241f3deacb5ceb955e10a4fa927da0f67",
+        "https://github.com/ash-project/ash/security/advisories/GHSA-7qr8-wrvq-566q",
+        "https://osv.dev/vulnerability/EEF-CVE-2026-86338"
+      ],
+      "solution": "将组件 ash 升级至 3.33.4 及以上版本",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-15638",
+      "title": "Secret Server填充预言机漏洞(CVE-2026-15638)",
+      "description": "Delinea Secret Server（On-Prem）是闭源特权访问管理软件，用于在 Windows 环境中集中保管、签发和轮换企业密钥与口令。 受影响版本中，能够访问 Secret Server 的未认证用户可利用填充预言机，借助服务器持有的密码学密钥解密或加密数据，密钥本身不会被暴露。该问题被官方归类为 CWE-327，并关联 CAPEC-463 Padding Oracle Crypto Attack，攻击面位于预认证登录相关密码学处理。 修复版本中通过加固预认证登录功能（含屏幕键盘）的密码学保护，消除可被用于填充预言机的可区分响应，切断未认证用户加解密服务器保护数据的路径。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.1,
+      "cvss_vector": "",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://delinea.com/security-advisories"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87265",
+      "title": "Oracle Purchasing越权漏洞(CVE-2026-87265)",
+      "description": "Oracle Purchasing 是 Oracle E-Business Suite 中的闭源采购管理模块，用于处理采购申请、采购订单及相关供应商采购流程。 受影响版本中，低权限攻击者可通过 HTTP 访问 Oracle Purchasing 的 Other issue 组件，在无需用户交互的情况下未授权读取关键数据，并创建、删除或修改 Oracle Purchasing 可访问的全部关键数据。 修复版本中通过应用 2026 年 9 月 Critical Security Patch Update，阻断低权限账户经 HTTP 对 Oracle Purchasing 关键数据的未授权读写路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87180",
+      "title": "Oracle HFM接管漏洞(CVE-2026-87180)",
+      "description": "Oracle Hyperion Financial Management 是 Oracle Hyperion 产品线中的商业财务合并与报告软件，用于企业集团合并、法定报告与财务管控，源码未公开。 受影响版本中，Security 组件存在可被低权限攻击者经 HTTP 远程利用的安全缺陷。已认证的低权限用户无需额外交互便能攻陷 Oracle Hyperion Financial Management，造成对产品的完全接管，并对机密性、完整性与可用性产生高影响。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 提供的安全补丁，修复 Security 组件中该可远程利用问题，阻止低权限攻击者接管 Hyperion Financial Management。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87169",
+      "title": "Oracle CLM跨站脚本漏洞(CVE-2026-87169)",
+      "description": "Oracle Contract Lifecycle Management for Public Sector 是 Oracle E-Business Suite 中的商业闭源产品，用于公共部门采购与合同全生命周期管理，其中 Wage Determination Online 组件提供在线薪资标准核定能力。 受影响版本中，未认证攻击者可通过 HTTP 访问 Wage Determination Online 组件，并诱导其他用户与恶意请求交互，从而在该组件及关联产品上下文中未授权读取部分可访问数据，并对部分数据执行插入、更新或删除。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Wage Determination Online 的 HTTP 处理路径，阻止未认证攻击者借助用户交互完成跨产品的数据读取与篡改。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87168",
+      "title": "Oracle Purchasing越权漏洞(CVE-2026-87168)",
+      "description": "Oracle Purchasing 是 Oracle E-Business Suite 中的采购管理产品，本次受影响组件为 G-Invoicing，该软件为闭源商业产品。 受影响版本中，低权限攻击者可通过 HTTP 访问 G-Invoicing 组件，在无需用户交互的情况下利用该易被利用的缺陷，对 Oracle Purchasing 可访问的关键数据实施未授权读取，以及未授权创建、删除或修改。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，修复 G-Invoicing 组件中导致未授权数据访问与改写的缺陷，阻止低权限攻击者经 HTTP 危害 Oracle Purchasing。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87167",
+      "title": "Oracle Purchasing越权漏洞(CVE-2026-87167)",
+      "description": "Oracle Purchasing 是 Oracle E-Business Suite 中的商业采购管理产品，非开源软件，G-Invoicing 是其中受影响的功能组件。 受影响版本中，低权限攻击者可通过 HTTP 远程访问 Oracle Purchasing 的 G-Invoicing 组件并利用该漏洞，无需用户交互。成功利用后可未授权创建、删除或修改关键采购数据，并读取全部 Oracle Purchasing 可访问数据。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 对 G-Invoicing 组件实施安全修复，阻断该未授权数据读取与篡改路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87166",
+      "title": "Oracle Purchasing越权漏洞(CVE-2026-87166)",
+      "description": "Oracle Purchasing 是 Oracle E-Business Suite 中的商业采购管理模块，用于处理采购申请、采购订单和供应商相关业务，源码未公开。 受影响版本中，已认证的低权限攻击者可通过 HTTP 访问 Oracle Purchasing，无需额外用户交互即可未授权创建、删除或修改关键采购数据，并读取全部可访问的采购数据。官方将组件标注为 Other issue，未公开具体接口名称与实现细节。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 提供安全补丁，阻断该 HTTP 路径上的未授权数据访问与篡改；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87165",
+      "title": "Oracle CLM接管漏洞(CVE-2026-87165)",
+      "description": "Oracle Contract Lifecycle Management for Public Sector 是 Oracle E-Business Suite 中的闭源政府采购与合同生命周期管理产品，ECC For Award and IDV 为其奖项与无限期交付工具相关组件。 受影响版本中，已通过身份认证的低权限攻击者可经 HTTP 网络访问利用该漏洞，在无需用户交互的条件下轻易攻陷 Oracle Contract Lifecycle Management for Public Sector，成功利用可导致对该产品的完全接管，机密性、完整性与可用性均受高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 安全补丁切断低权限攻击者经 HTTP 接管该产品的利用路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "将组件 contract_lifecycle_management_for_public_sector 升级至 2026-09-15 及以上版本",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87163",
+      "title": "Oracle Purchasing接管漏洞(CVE-2026-87163)",
+      "description": "Oracle Purchasing 是 Oracle E-Business Suite 中的采购管理产品，属于闭源商业软件，用于处理企业采购申请、采购订单与供应商协同。 受影响版本中，低权限攻击者可通过 HTTP 远程访问 Oracle Purchasing。官方公告指出该漏洞易于利用，成功利用可完全接管 Oracle Purchasing，并导致机密性、完整性与可用性均受高影响。公开资料将受影响组件记为 Other issue，未披露具体源码入口或漏洞类型。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 提供的安全补丁阻断该 HTTP 接管路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87162",
+      "title": "Oracle CLM接管漏洞(CVE-2026-87162)",
+      "description": "Oracle Contract Lifecycle Management for Public Sector 是 Oracle E-Business Suite 中面向公共部门采购与合同全生命周期管理的商业闭源产品，Award/PO 组件用于处理授标与采购订单。 受影响版本中，Award/PO 组件存在可经 HTTP 远程利用的安全缺陷。具备低权限且可网络访问的攻击者无需用户交互即可利用该缺陷，成功后可完全接管 Oracle Contract Lifecycle Management for Public Sector，造成机密性、完整性与可用性全部受损。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对 Award/PO 组件发布安全补丁，阻断低权限攻击者经 HTTP 接管该产品的利用路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87161",
+      "title": "Oracle HRMS越权访问漏洞(CVE-2026-87161)",
+      "description": "Oracle HRMS (India) 是 Oracle E-Business Suite 中面向印度地区的人力资源管理系统产品，属于闭源商业软件，用于处理薪酬、法定合规及本地化人事流程。 受影响版本中，Oracle HRMS (India) 的 Internal Operations 组件在经 HTTP 对外提供服务时存在可被低权限用户利用的缺陷。具备网络访问能力的低权限攻击者无需用户交互即可读取该产品可访问的全部关键数据，并对部分数据执行未授权的更新、插入或删除；该漏洞还会产生范围变更，可能显著影响其他产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Internal Operations 组件实施安全修补，切断低权限用户经 HTTP 获取越权读访问与部分写操作的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87160",
+      "title": "Oracle HRMS越权访问漏洞(CVE-2026-87160)",
+      "description": "Oracle HRMS (India) 是 Oracle E-Business Suite 中的闭源印度本地化人力资源产品，Internal Operations 为其内部操作组件。 受影响版本中，低权限攻击者可通过 HTTPS 访问 Internal Operations，在无需用户交互的情况下读取 Oracle HRMS (India) 的全部可访问数据，并对部分数据执行未授权的更新、插入或删除。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，阻断低权限攻击者经 HTTPS 对 Internal Operations 的未授权数据读取与部分数据改写。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87159",
+      "title": "Oracle HRMS越权漏洞(CVE-2026-87159)",
+      "description": "Oracle HRMS (India) 是 Oracle E-Business Suite 中的闭源印度本地化人力资源产品，Internal Operations 为其内部业务处理组件，经 HTTP 对外提供访问能力。 受影响版本中，已认证的低权限攻击者可通过 HTTP 访问 Internal Operations 组件，在无需用户交互的条件下读取关键数据或全部可访问数据，并对这些数据执行未授权的创建、删除或修改。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复 Internal Operations 组件中的该缺陷，阻止低权限攻击者再经 HTTP 对 Oracle HRMS (India) 关键数据实施未授权读写。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87158",
+      "title": "Oracle订单管理越权漏洞(CVE-2026-87158)",
+      "description": "Oracle Order Management 是 Oracle E-Business Suite 中的闭源订单管理产品，Enterprise Command Center 组件用于订单运营可视化与查询。 受影响版本中，低权限攻击者可经 HTTP 网络访问 Enterprise Command Center，在无需用户交互的情况下危害 Oracle Order Management，成功利用后可未授权读取其可访问的全部关键数据，并对部分数据执行未授权的更新、插入或删除。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 提供安全补丁，切断低权限认证用户经 HTTP 访问后扩大读取全部订单管理可访问数据并改写部分数据的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87157",
+      "title": "Oracle订单管理越权漏洞(CVE-2026-87157)",
+      "description": "Oracle Order Management 是 Oracle E-Business Suite 中的闭源订单管理产品，Product Diagnostic Tools 为其产品诊断工具组件。 受影响版本中，已获低权限的攻击者可经 HTTP 访问 Product Diagnostic Tools，在无需用户交互的情况下对 Oracle Order Management 的关键数据实施未授权读取以及创建、删除或修改，从而获取或改写全部可访问业务数据。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修补 Product Diagnostic Tools 中导致未授权数据访问与改写的缺陷，阻止低权限账户继续经 HTTP 危害订单管理数据。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87151",
+      "title": "Oracle物料清单数据泄露(CVE-2026-87151)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的物料清单产品，属于商业闭源套件，用于维护物料结构、工艺路线与工程配置，Setup Workbench 为其配置工作台组件。 受影响版本中，Setup Workbench 存在可经 HTTP 远程利用的安全缺陷。低权限攻击者无需用户交互即可未授权访问关键数据，或获取该产品可访问的全部数据，并可能对其他关联产品造成显著影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Setup Workbench 相关缺陷，阻断低权限用户经 HTTP 未授权读取物料清单数据的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87150",
+      "title": "Oracle BOM接管漏洞(CVE-2026-87150)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的商业物料清单管理产品，Setup Workbench 用于物料清单相关配置，源码不公开。 受影响版本中，低权限攻击者可通过 HTTP 访问 Setup Workbench 相关接口，在无需用户交互的条件下利用该漏洞并接管 Oracle Bills of Material，造成机密性、完整性和可用性的高影响。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，对 Oracle E-Business Suite 中该组件进行安全更新，切断低权限网络攻击者接管物料清单产品的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-87149",
+      "title": "Oracle CLM越权访问漏洞(CVE-2026-87149)",
+      "description": "Oracle Contract Lifecycle Management for Public Sector 是 Oracle E-Business Suite 中的商业软件产品，用于公共部门合同授予与采购订单（Award/PO）全生命周期管理。 受影响版本中，Award/PO 组件存在可经 HTTP 远程利用的漏洞。低权限攻击者在具备网络访问的条件下即可未授权读取该产品可访问的全部关键数据，并对部分数据执行未授权的更新、插入或删除。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 收紧 Award/PO 组件对低权限 HTTP 请求的处理，消除未授权读取全部关键数据以及对部分数据执行更新、插入或删除的风险；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83484",
+      "title": "Oracle联邦HR越权漏洞(CVE-2026-83484)",
+      "description": "Oracle US Federal Human Resources 是 Oracle E-Business Suite 中的商业人力资源产品，用于美国联邦机构人事与薪酬等相关业务处理，源码未公开。 受影响版本中，Internal Operations 组件在经 HTTP 处理已认证低权限用户请求时存在访问控制不足。具备网络访问能力的低权限攻击者可越权创建、删除或修改关键人事数据，并读取部分可访问数据。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 收紧 Internal Operations 对低权限 HTTP 请求的授权校验，阻止越权读写人事数据；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83483",
+      "title": "Oracle高级福利接管漏洞(CVE-2026-83483)",
+      "description": "Oracle Advanced Benefits 是 Oracle E-Business Suite 中的商业福利管理产品，提供员工自助福利测算与分析能力，源码未公开。 受影响版本中，Self-serv What-if Analysis 组件存在难以利用的安全缺陷。具备高权限的攻击者可经 HTTP 远程访问该组件，在攻击复杂度较高的条件下攻陷 Oracle Advanced Benefits。该漏洞会造成范围变化，攻击成功后可接管 Oracle Advanced Benefits，并可能显著影响其他产品。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对该组件实施安全更新，阻断高权限攻击者经 HTTP 接管产品的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83482",
+      "title": "Oracle Contracts接管漏洞(CVE-2026-83482)",
+      "description": "Oracle Contracts 是 Oracle E-Business Suite 中的闭源商业组件，用于企业合同管理，Internal Operations 负责内部运营相关处理。 受影响版本中，Internal Operations 组件存在可经 HTTP 网络访问利用的缺陷。高权限攻击者在获得网络访问后可攻陷 Oracle Contracts，成功利用可导致该产品被完全接管，并同时影响机密性、完整性与可用性。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Oracle Contracts Internal Operations 进行安全更新，阻断该远程接管路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83481",
+      "title": "Oracle Contracts接管漏洞(CVE-2026-83481)",
+      "description": "Oracle Contracts 是 Oracle E-Business Suite 中的闭源商业合同管理产品，Internal Operations 组件承担产品内部业务操作。 受影响版本中，具备高权限的攻击者只要通过 HTTP 获得网络访问，即可在无需用户交互的条件下利用该漏洞接管 Oracle Contracts，对机密性、完整性和可用性造成高影响。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 安全补丁修复 Internal Operations 组件中的该问题，阻止高权限攻击者经由 HTTP 接管产品。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83479",
+      "title": "Oracle Contracts接管漏洞(CVE-2026-83479)",
+      "description": "Oracle Contracts 是 Oracle E-Business Suite 中的合同管理产品，属于闭源商业软件，Internal Operations 组件用于合同内部运营相关处理。 受影响版本中，Internal Operations 组件存在可经 HTTP 远程利用的漏洞。低权限攻击者无需用户交互即可攻陷 Oracle Contracts，成功利用后可接管该产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 12.2.14-12.2.15 发布官方安全补丁，切断该 HTTP 利用路径，阻止低权限攻击者接管 Oracle Contracts。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83477",
+      "title": "Oracle WIP越权漏洞(CVE-2026-83477)",
+      "description": "Oracle Work in Process 是 Oracle E-Business Suite 中的闭源制造执行组件，Workbenches 用于管理车间作业与在制品相关操作。 受影响版本中，Workbenches 组件对相邻物理通信网段上的未认证 TCP 访问缺少有效约束，攻击者可在无需登录的情况下获取 Oracle Work in Process 中的关键数据，并对其实施未授权创建、删除或修改。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update 阻断该未认证相邻网段访问路径，公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83464",
+      "title": "Oracle MAS远程接管漏洞(CVE-2026-83464)",
+      "description": "Oracle Mobile Application Server 是 Oracle E-Business Suite 中的商业闭源产品，其 MWA Terminal Server 组件用于为仓储与移动终端提供终端接入服务。 受影响版本中，未认证攻击者可通过 TCP 网络访问 MWA Terminal Server，在利用条件较苛刻的情况下接管 Oracle Mobile Application Server，造成机密性、完整性与可用性的全面影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 提供的安全补丁切断该未授权接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83463",
+      "title": "Oracle MAS邻网接管漏洞(CVE-2026-83463)",
+      "description": "Oracle Mobile Application Server 是 Oracle E-Business Suite 中的闭源产品，MWA Terminal Server 是其中的终端服务组件。 受影响版本中，未认证攻击者在接入运行 Oracle Mobile Application Server 的物理通信网段后，可经 MWA Terminal Server 的 TCP 通道利用该高复杂度漏洞，成功后可接管 Oracle Mobile Application Server。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，对 12.2.3 至 12.2.15 的 MWA Terminal Server 进行修补，阻止邻网未认证攻击者接管该服务。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83456",
+      "title": "Oracle DSR接管漏洞(CVE-2026-83456)",
+      "description": "Oracle Demand Signal Repository 是 Oracle E-Business Suite 中的商业需求信号仓储产品，用于收集与分析零售需求数据，源码未公开。 受影响版本中，Internal Operations 组件经 HTTP 暴露给低权限网络攻击者，官方评估为易于利用，成功后可接管 Oracle Demand Signal Repository。 修复版本中通过 2026 年 9 月 Critical Security Patch Update 对该组件实施安全更新，阻断低权限 HTTP 攻击者接管产品；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83453",
+      "title": "Oracle文档协作接管漏洞(CVE-2026-83453)",
+      "description": "Oracle Document Management and Collaboration 是 Oracle E-Business Suite 中的闭源文档管理与协作产品，Internal Operations 为其内部操作组件。 受影响版本中，高权限攻击者只要具备经 HTTP 的网络访问，便能利用 Internal Operations 中易于利用的缺陷接管 Oracle Document Management and Collaboration，造成机密性、完整性和可用性全部受损。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，切断高权限攻击者经 HTTP 接管该组件的利用路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83452",
+      "title": "Oracle文档管理认证缺失(CVE-2026-83452)",
+      "description": "Oracle Document Management and Collaboration 是 Oracle E-Business Suite 中的商业文档管理与协作产品，用于企业文档存储、共享及相关协同操作，源码未公开。 受影响版本中，Internal Operations 组件在经 HTTP 对外提供服务时存在身份认证缺陷，未认证攻击者只要能够通过网络访问该 HTTP 接口，即可在无需交互的情况下攻陷该产品并完成接管，导致机密性、完整性与可用性同时受到高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 提供的官方补丁切断未认证 HTTP 访问通往产品接管的路径；公开资料未披露源码级修改细节，需在 12.2.3 至 12.2.15 环境中按厂商公告完成补丁安装。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83450",
+      "title": "Oracle物料清单接管漏洞(CVE-2026-83450)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的商业物料清单产品，非开源，用于维护制造物料清单及配套设置，Setup Workbench 为其设置工作台组件。 受影响版本中，Setup Workbench 存在难以利用的漏洞。具备高权限的攻击者可借助 HTTP 网络访问该组件并接管 Oracle Bills of Material，攻击还可能显著影响其他产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复 Setup Workbench 中的该问题，消除高权限攻击者经 HTTP 接管产品的路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83449",
+      "title": "Oracle BOM越权访问漏洞(CVE-2026-83449)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的物料清单产品，用于管理制造与供应链场景下的物料结构，属于闭源商业软件。 受影响版本中，Internal Operations 组件存在可经 HTTP 利用的漏洞。具备低权限的网络攻击者可在无需用户交互的情况下访问全部 Oracle Bills of Material 可访问数据，并造成该组件部分拒绝服务；该漏洞还会改变影响范围，可能显著波及其他产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，切断低权限用户经 HTTP 访问 Internal Operations 后读取全部可访问数据并引发部分拒绝服务的路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83448",
+      "title": "Oracle BOM越权漏洞(CVE-2026-83448)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的商业物料清单管理组件，用于维护产品结构与制造相关内部操作，源码未公开。 受影响版本中，Internal Operations 组件经 HTTP 暴露的接口存在可被低权限攻击者利用的缺陷。具备网络访问能力的低权限用户无需额外交互便可远程触发，成功后可未授权读取全部 Bills of Material 可访问数据，并创建、删除或修改其中的关键数据。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对该组件发布安全补丁，阻止低权限用户经 HTTP 继续获得未授权的数据读取与修改能力；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83447",
+      "title": "Oracle BOM越权漏洞(CVE-2026-83447)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的商业物料清单产品，用于维护产品结构与内部运营相关数据，源码不对外公开。 受影响版本中，Internal Operations 组件存在可经 HTTP 远程利用的缺陷。已认证的低权限攻击者无需用户交互即可未授权读取物料清单可访问数据，并创建、删除或修改其中的关键数据，造成机密性与完整性受损。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，在 Bills of Material 的 Internal Operations 组件上消除该 HTTP 路径上的未授权数据访问与篡改能力。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83445",
+      "title": "Oracle CMRO接管漏洞(CVE-2026-83445)",
+      "description": "Oracle Complex Maintenance, Repair and Overhaul（CMRO）是 Oracle E-Business Suite 中的闭源商业组件，用于复杂资产的维护、修理和大修业务管理。 受影响版本中，Internal Operations 组件存在可经 HTTPS 远程利用的安全缺陷。具备低权限的攻击者在无需用户交互的情况下，可通过网络访问完全接管 Oracle Complex Maintenance, Repair and Overhaul，对机密性、完整性和可用性造成高影响。官方未披露具体漏洞类型与实现细节。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，对 Internal Operations 组件实施安全更新，阻断低权限 HTTPS 请求对产品的接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83444",
+      "title": "Oracle Product Hub接管漏洞(CVE-2026-83444)",
+      "description": "Oracle Product Hub 是 Oracle E-Business Suite 中的商业产品信息管理组件，用于集中维护企业产品主数据，源码未公开。 受影响版本中，Internal Operations 组件经 HTTP 对外提供服务时存在可被低权限攻击者利用的缺陷。具备网络访问能力的低权限用户能够在无需其他用户交互的条件下攻陷 Oracle Product Hub，并造成该产品被完全接管。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，阻断低权限攻击者经 HTTP 接管 Product Hub 的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83443",
+      "title": "Oracle Assets数据泄露漏洞(CVE-2026-83443)",
+      "description": "Oracle Assets 是 Oracle E-Business Suite 中的固定资产管理产品，属于商业闭源软件，用于企业资产核算，其 Internal Operations 组件对外提供 HTTP 访问能力。 受影响版本中，低权限攻击者只要具备网络访问条件，即可通过 HTTP 利用 Internal Operations 组件中的缺陷，在无需用户交互的情况下读取 Oracle Assets 的关键数据，并可获取该产品可访问数据的完整访问能力。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Internal Operations 相关缺陷，阻断低权限用户经 HTTP 未授权读取 Oracle Assets 数据的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83438",
+      "title": "Oracle Engineering越权漏洞(CVE-2026-83438)",
+      "description": "Oracle Engineering 是 Oracle E-Business Suite 中的工程管理产品，用于支撑工程变更、物料清单与产品数据管理，属于商业闭源软件。 受影响版本中，Internal Operations 组件存在经 HTTP 可触发、利用难度较高的安全缺陷。低权限攻击者在具备网络访问能力时可破坏 Oracle Engineering，成功后可未授权创建、删除或修改关键数据，并读取 Oracle Engineering 可访问的全部数据；该问题还会显著影响其他产品。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，修补 Internal Operations 相关缺陷，阻止低权限攻击者经 HTTP 未授权访问或篡改 Oracle Engineering 及相关产品中的关键数据。",
+      "severity": "HIGH",
+      "cvss_score": 8.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83437",
+      "title": "Oracle Engineering信息泄露(CVE-2026-83437)",
+      "description": "Oracle Engineering 是 Oracle E-Business Suite 中的工程管理产品，属于商业闭源软件，其 Change Management 组件用于处理工程变更。 受影响版本中，低权限攻击者只要具备 HTTP 网络访问即可利用 Change Management 组件中的该漏洞，在无需用户交互的条件下读取 Oracle Engineering 可访问的关键数据，并且攻击可能进一步影响同一环境中的其他产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，切断低权限用户经 HTTP 访问 Change Management 后获取关键数据的路径。公开资料未披露具体源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83435",
+      "title": "Oracle BOM越权漏洞(CVE-2026-83435)",
+      "description": "Oracle Bills of Material 是 Oracle E-Business Suite 中的闭源商业物料清单组件，用于维护制造物料结构、BOM 及内部运营流程。 受影响版本中，Internal Operations 组件存在难以利用的缺陷，低权限攻击者可经 HTTP 网络访问尝试攻破该组件；成功后可对物料清单关键数据实施未授权创建、删除或修改，并读取全部可访问的关键数据，攻击还可显著影响其他产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 为该组件提供安全补丁，阻断低权限用户经 HTTP 对物料清单关键数据的未授权读写；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83429",
+      "title": "Oracle DSR越权漏洞(CVE-2026-83429)",
+      "description": "Oracle Demand Signal Repository 是 Oracle E-Business Suite 中的商业需求信号仓储产品，用于支撑内部运营相关的需求与库存数据管理，源码不对外公开。 受影响版本中，厂商公告说明 Internal Operations 组件存在可经 HTTP 利用的缺陷。具备网络访问能力的低权限攻击者无需用户交互即可攻陷该产品，成功后可未授权读取全部可访问的关键数据，并可未授权创建、删除或修改这些数据。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 收紧 Internal Operations 的访问与数据处理路径，消除低权限账户经 HTTP 实施的未授权数据读取与篡改风险；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83425",
+      "title": "Oracle CMRO数据越权漏洞(CVE-2026-83425)",
+      "description": "Oracle Complex Maintenance, Repair and Overhaul（CMRO）是 Oracle E-Business Suite 中的商业闭源产品，用于管理航空及资产密集场景下的复杂维修、修理和大修业务，其中 Internal Operations 为该产品的内部运营组件。 受影响版本中，低权限攻击者可通过 HTTP 网络访问 Internal Operations 组件并利用该缺陷，在无需用户交互的条件下获取 Oracle CMRO 可访问的关键数据或全部数据，同时造成该产品部分拒绝服务；该问题还会显著影响其他关联产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复该缺陷，阻止低权限用户经 HTTP 未授权读取关键数据并引发部分拒绝服务。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83418",
+      "title": "Oracle SEPP越权漏洞(CVE-2026-83418)",
+      "description": "Oracle Communications Cloud Native Core Security Edge Protection Proxy（SEPP）是 Oracle Communications 提供的商业闭源 5G 安全边缘保护代理，用于在 5G 核心网与外部网络之间执行安全策略、流量过滤和受控互联。 受影响版本中，SEPP 组件存在难以利用的缺陷，具备低权限的攻击者可通过 HTTP 网络访问危及该产品。该缺陷位于 SEPP，但成功利用会改变影响范围并波及其他产品，造成对 SEPP 可访问关键数据的未授权读取，以及未授权创建、删除或修改。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 SEPP 组件发布安全更新，阻止低权限攻击者经 HTTP 对关键数据实施越权访问与篡改，并降低对关联产品的影响扩散。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83351",
+      "title": "Oracle RDBMS接管漏洞(CVE-2026-83351)",
+      "description": "Oracle Database Server 是 Oracle 公司提供的商业关系型数据库产品，RDBMS 为其核心数据库引擎，源码未公开，主要用于企业级数据存储与事务处理。 受影响版本中，RDBMS 组件存在可经 Oracle Net 被未认证攻击者利用的高复杂度缺陷。攻击者无需权限、无需用户交互，在获得网络访问后可以攻陷 RDBMS，造成机密性、完整性与可用性全面受损并接管数据库。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 更新 RDBMS 组件，阻断未认证攻击者经 Oracle Net 接管数据库的路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83350",
+      "title": "Oracle Net拒绝服务漏洞(CVE-2026-83350)",
+      "description": "Oracle Database Server 是 Oracle 公司的商业关系型数据库产品，Oracle Net Services 负责客户端与数据库之间的网络连接、监听与会话管理，源码不公开。 受影响版本中，未认证攻击者只要能经 Oracle Net 访问 Oracle Net Services，即可造成该组件挂起或反复崩溃，形成完全拒绝服务。厂商风险矩阵将所需包标记为 Connection Manager，并确认该漏洞可在无身份认证条件下远程利用。 修复版本中通过 Oracle Database Server 2026 年 9 月 Critical Security Patch Update 修复该缺陷，阻断未认证攻击者经 Oracle Net 导致 Oracle Net Services 挂起或崩溃的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83349",
+      "title": "Oracle Net Services拒绝服务漏洞(CVE-2026-83349)",
+      "description": "Oracle Database Server 是 Oracle 公司的商业关系型数据库产品，其中 Oracle Net Services 负责客户端与数据库之间的网络连接与会话管理，源码未公开。 受影响版本中，Oracle Net Services 的 Connection Manager 在经 Oracle Net 协议处理未认证网络请求时存在缺陷，远程攻击者无需身份认证即可造成 Oracle Net Services 挂起或频繁重复崩溃，形成完全拒绝服务。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 更新 Connection Manager 对未认证 Oracle Net 请求的处理，阻断由此导致服务挂起或崩溃的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83348",
+      "title": "Oracle数据库接管漏洞(CVE-2026-83348)",
+      "description": "Oracle Database Server 是 Oracle 公司提供的商业关系型数据库产品，其中 RDBMS 组件负责核心数据管理；该软件为闭源产品，同时提供数据库服务端与客户端安装形态。 受影响版本中，RDBMS 组件存在可被低权限用户利用的缺陷。攻击者只要拥有 Create DB Link 权限，即可通过 Oracle Net 远程访问并接管 RDBMS，造成机密性、完整性和可用性全部受损。该问题同样适用于仅安装 Oracle Database 客户端的环境。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 修补 RDBMS 相关缺陷，阻断持有 Create DB Link 权限的攻击者经 Oracle Net 接管数据库的路径。公开资料未披露更细的源码改动，需按官方公告应用对应安全补丁。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83347",
+      "title": "Oracle监听器拒绝服务漏洞(CVE-2026-83347)",
+      "description": "Oracle Database Server 是商业关系型数据库产品，Oracle Net Services 提供客户端与数据库之间的网络连接能力，其中 Listener 对外接受连接请求。该组件为闭源软件。 受影响版本中，Oracle Net Services 的 Listener 在处理未认证攻击者经 TCPS 发起的网络访问时存在拒绝服务缺陷。攻击者在具备 TCPS 网络可达性，并促使除攻击者以外的用户完成交互后，可造成 Oracle Net Services 挂起或反复崩溃，形成完整拒绝服务。公开资料未披露更细的源码实现。 修复版本中通过官方 2026年9月 Critical Security Patch Update 收紧 Listener 对未认证 TCPS 流量的处理，切断可导致服务挂起或反复崩溃的路径。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83343",
+      "title": "Oracle NMS未授权访问漏洞(CVE-2026-83343)",
+      "description": "Oracle Utilities Network Management System 是 Oracle Utilities Applications 套件中的闭源商业产品，用于电力与公用事业网络的运行监控和调度，本次漏洞位于 System Wide 组件。 受影响版本中，未授权攻击者只要具备 HTTP 网络访问能力即可利用该漏洞，读取系统全部可访问数据，并对部分可访问数据执行未授权的更新、插入或删除。官方未公开具体入口、接口名称与实现细节。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，阻断未授权攻击者经 HTTP 读取全部可访问数据并改写部分数据的利用路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83342",
+      "title": "Oracle NMS本地接管漏洞(CVE-2026-83342)",
+      "description": "Oracle Utilities Network Management System 是 Oracle Utilities Applications 产品族中的商业软件，面向电力等公用事业提供网络运行与停电管理能力，源码未公开。 受影响版本中，System Wide 组件存在易于利用的本地安全漏洞。已获得该系统运行基础设施登录权限的低权限攻击者，无需用户交互即可破坏 Oracle Utilities Network Management System，成功利用后可完全接管该系统，机密性、完整性和可用性均会受到高影响。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 提供的安全更新，切断低权限本地登录用户接管系统的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83338",
+      "title": "Oracle诊断接口接管漏洞(CVE-2026-83338)",
+      "description": "Oracle Applications Manager 是 Oracle E-Business Suite 中的商业系统管理产品，用于监控与管理企业应用环境，不属于开源软件。本次受影响组件为 Oracle Diagnostics Interfaces。 受影响版本中，具备低权限的攻击者可通过 HTTP 访问 Oracle Diagnostics Interfaces，在无需用户交互的条件下利用该易被利用的漏洞接管 Oracle Applications Manager，并造成机密性、完整性和可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 发布针对 Oracle E-Business Suite 的安全补丁，切断该诊断接口路径上的接管风险；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83336",
+      "title": "Oracle BIEE本地接管漏洞(CVE-2026-83336)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的闭源商业智能套件，Analytics Server 为其核心分析服务组件。 受影响版本中，Analytics Server 存在可被轻易利用的安全缺陷，具备基础设施本地登录权限的低权限攻击者无需用户交互即可危及该产品，成功利用可导致 Oracle Business Intelligence Enterprise Edition 被接管，并造成机密性、完整性与可用性的高影响。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 针对 Analytics Server 组件发布安全补丁，切断低权限本地登录用户接管产品的利用路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83335",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83335)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业商务智能套件，Analytics Server 组件用于提供分析查询与报表服务，源码未公开。 受影响版本中，Analytics Server 在处理经 HTTP 传入的低权限网络请求时存在可被轻易利用的缺陷。具备低权限的远程攻击者无需用户交互即可攻陷 Oracle Business Intelligence Enterprise Edition，造成机密性、完整性与可用性的全面影响，并接管该产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修补 Analytics Server 中该可利用缺陷，阻断低权限攻击者经 HTTP 接管产品的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83333",
+      "title": "Oracle Net Services拒绝服务漏洞(CVE-2026-83333)",
+      "description": "Oracle Database Server 是 Oracle 公司的商业关系型数据库产品，其中 Oracle Net Services 提供客户端与数据库实例之间的网络连接、协议处理与 Listener 监听服务。 受影响版本中，未经身份认证的攻击者只要具备经 Oracle Net 访问 Listener 的网络条件，即可触发 Oracle Net Services 挂起或可重复崩溃，造成该组件完全拒绝服务。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 修补 Oracle Net Services Listener 相关缺陷，阻断未认证网络请求导致服务挂起或崩溃的攻击路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83329",
+      "title": "Oracle应用框架接管漏洞(CVE-2026-83329)",
+      "description": "Oracle Applications Framework（OA Framework）是 Oracle E-Business Suite 中的商业闭源应用框架，用于构建和个性化企业应用界面。 受影响版本中，Personalization 组件在经 HTTP 处理低权限用户请求时存在易被利用的缺陷，具备网络访问能力的低权限攻击者可借此完全接管 Oracle Applications Framework。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Personalization 组件实施安全更新，阻断低权限 HTTP 请求对框架的接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83325",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83325)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能平台，属闭源软件，用于企业报表、仪表盘与数据分析，本次问题位于 Platform Security 组件。 受影响版本中，具备高权限的攻击者可通过 HTTP 网络访问利用 Platform Security 组件中易于利用的漏洞，在无需用户交互的情况下接管 Oracle Business Intelligence Enterprise Edition，造成机密性、完整性与可用性全面受损。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 8.2.0.0.0 与 26.01.0.0.0 发布安全补丁，阻断该远程接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83324",
+      "title": "Oracle BI平台安全漏洞(CVE-2026-83324)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能分析软件，用于报表、仪表盘与企业数据分析，源码不公开。 受影响版本中，BI Platform Security 组件存在难以利用的安全缺陷。已认证的低权限攻击者可通过 HTTP 远程访问触发该问题，成功后可对 Oracle Business Intelligence Enterprise Edition 可访问的全部或关键数据执行未授权创建、删除或修改，并可读取其中一部分数据；该缺陷还可对其他产品产生范围外影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 BI Platform Security 组件进行安全更新，阻断该未授权数据访问与篡改路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:L/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83323",
+      "title": "Oracle BI EE本地接管漏洞(CVE-2026-83323)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业闭源商业智能平台，用于企业报表、仪表盘与数据分析，本次问题位于 Platform Security 组件。 受影响版本中，已登录该产品所在基础设施的低权限攻击者，可在另一名用户交互配合下利用 Platform Security 组件中难以触发的缺陷，攻陷 Oracle Business Intelligence Enterprise Edition；成功利用可完全接管该产品，并可能显著影响其他产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Platform Security 组件发布官方安全补丁，切断该本地接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:R/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83322",
+      "title": "Oracle BI平台安全漏洞(CVE-2026-83322)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能套件，用于企业报表、仪表盘与数据分析，Platform Security 为其平台安全组件，并非开源软件。 受影响版本中，Platform Security 组件存在可经 HTTP 远程利用的安全缺陷。已取得高权限的攻击者无需用户交互便可利用该缺陷，成功后可完全接管 Oracle Business Intelligence Enterprise Edition，机密性、完整性与可用性均会受到高影响。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修补 Platform Security 组件中的该缺陷，阻止高权限攻击者经 HTTP 接管系统。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83317",
+      "title": "Oracle BI安装接管漏洞(CVE-2026-83317)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能套件，用于企业报表、仪表盘与数据分析，为闭源商业软件。 受影响版本中，Installation 组件存在可被低权限本地登录攻击者利用的安全缺陷。攻击者在获得运行 Oracle Business Intelligence Enterprise Edition 的基础设施登录权限后，可在无需用户交互的情况下利用该缺陷，最终接管 Oracle Business Intelligence Enterprise Edition。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Installation 组件进行安全更新，消除该本地接管风险；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83316",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83316)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能套件，用于企业报表、分析与数据展示，源码不公开。 受影响版本中，Platform Security 组件存在难以利用的安全缺陷，已获得运行该产品基础设施登录权限的低权限攻击者可危害 Oracle Business Intelligence Enterprise Edition，成功利用后可接管该产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 26.01.0.0.0 的 Platform Security 组件实施安全更新，阻止低权限本地登录用户接管产品；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.0,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83304",
+      "title": "Oracle BI越权漏洞(CVE-2026-83304)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能套件，用于企业报表、仪表盘与数据分析，源码不公开。 受影响版本中，Analytics Web General 组件存在难以利用的远程安全缺陷。未经身份认证的攻击者可借助 HTTP 网络访问，在高攻击复杂度条件下对产品实施未授权创建、删除或修改关键数据、读取全部可访问数据，并造成部分拒绝服务；该缺陷还会改变影响范围，波及其他相关产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 针对 Analytics Web General 的安全更新，阻断未认证 HTTP 请求对关键数据的越权读写以及部分拒绝服务。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.9,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83299",
+      "title": "Oracle BI Web接管漏洞(CVE-2026-83299)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品族中的闭源商业智能平台，用于提供企业报表、仪表盘与分析 Web 服务，Analytics Web General 是其 Web 通用组件。 受影响版本中，Analytics Web General 组件存在难以利用的安全缺陷。未经身份验证的攻击者可通过 HTTP 网络访问该组件，在无需用户交互的条件下发起攻击，成功后可完全接管 Oracle Business Intelligence Enterprise Edition。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 12.2.1.4.0 的 Analytics Web General 组件实施安全更新，阻断未经身份验证的远程接管路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83298",
+      "title": "Oracle BI Publisher接管漏洞(CVE-2026-83298)",
+      "description": "Oracle BI Publisher 是 Oracle Analytics 产品线中的商业报表发布软件，用于生成、管理和分发业务报表，源码未公开。 受影响版本中，BI Platform Security 组件存在可通过 HTTP 利用的安全缺陷。高权限攻击者无需用户交互即可经网络访问该组件并完全接管 Oracle BI Publisher，导致机密性、完整性和可用性均受高影响。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修补 BI Platform Security 相关缺陷，阻断高权限攻击者经 HTTP 接管产品的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83296",
+      "title": "Oracle BI Search接管漏洞(CVE-2026-83296)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业闭源商业智能平台，提供报表、仪表盘与检索等分析能力，本漏洞位于 BI Search 组件。 受影响版本中，低权限攻击者可通过 HTTP 网络访问触发该难以利用的缺陷，在无需用户交互的条件下危及 Oracle Business Intelligence Enterprise Edition，成功利用可导致对产品的完全接管。官方未披露具体入口、漏洞类型与源码路径。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 对 BI Search 组件完成安全修复，切断该远程接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83295",
+      "title": "Oracle BI SOAP接管漏洞(CVE-2026-83295)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能平台，属于闭源商业软件，Presentation Services 组件负责仪表盘与报表展示，并对外提供 SOAP 访问能力。 受影响版本中，Presentation Services 存在难以利用的安全漏洞，已认证的低权限攻击者可经 SOAP 网络访问触发该问题，成功利用后可接管 Oracle Business Intelligence Enterprise Edition，机密性、完整性和可用性均可被完全破坏。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Presentation Services 进行安全更新，阻断经 SOAP 的接管路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83294",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83294)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的闭源商业智能套件，用于企业报表、仪表盘与数据分析，Platform Security 为其平台安全组件。 受影响版本中，Platform Security 组件存在易于利用的安全缺陷。攻击者获得运行 Oracle Business Intelligence Enterprise Edition 的基础设施登录能力后，无需该产品自身认证，可在其他用户交互配合下攻陷该组件，并接管 Oracle Business Intelligence Enterprise Edition。厂商未公开具体漏洞类型与源码位置。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Platform Security 组件实施安全修补，切断未认证本地攻击者借用户交互接管该产品的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83293",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83293)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能套件，用于构建报表、仪表盘并开展企业数据分析，FNDN 是其中的基础组件。该产品为闭源商业软件。 受影响版本中，低权限攻击者凭借对运行 Oracle Business Intelligence Enterprise Edition 的基础设施的本地登录，可利用 FNDN 组件中易于利用的漏洞接管该产品，造成机密性、完整性与可用性的高影响。 修复版本中通过应用 Oracle 2026年9月 Critical Security Patch Update，对 FNDN 组件发布官方安全补丁，阻断低权限本地登录用户接管 Oracle Business Intelligence Enterprise Edition 的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83292",
+      "title": "Oracle BI EE平台安全漏洞(CVE-2026-83292)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能平台，用于企业报表、仪表盘和数据分析，其 Platform Security 组件负责平台安全能力，该产品为闭源商业软件。 受影响版本中，低权限攻击者可通过 HTTP 网络访问触发 Platform Security 组件中难以利用的安全缺陷，成功后可完全接管 Oracle Business Intelligence Enterprise Edition，并造成机密性、完整性和可用性的高影响。官方未披露具体漏洞类型、对外入口与源码位置。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Platform Security 组件实施官方安全补丁，阻断该远程接管路径；公开资料未提供更细粒度的源码修改说明。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83290",
+      "title": "Oracle BI EE本地接管漏洞(CVE-2026-83290)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能平台，非开源，用于企业数据分析、报表与决策支持，Platform Security 为其平台安全组件。 受影响版本中，Platform Security 组件存在易被利用的安全缺陷。已获得产品所在基础设施登录权限的低权限攻击者可在无需用户交互的情况下利用该缺陷，完整接管 Oracle Business Intelligence Enterprise Edition，对机密性、完整性和可用性造成高影响。公开资料未披露具体源码实现。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Platform Security 组件发布安全补丁，阻止低权限本地登录用户接管该产品。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83289",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83289)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业闭源商业智能与报表平台，Analytics Web General 组件对外提供 Web 与 SOAP 分析服务。 受影响版本中，Analytics Web General 组件在经 SOAP 协议提供的网络入口上存在难以利用的安全缺陷。具备低权限的攻击者只要能够通过 SOAP 访问目标服务，即可在无需额外用户交互的条件下攻陷 Oracle Business Intelligence Enterprise Edition，实现对产品的完全接管，并造成机密性、完整性与可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对受影响的 Analytics Web General 组件实施安全更新，阻断低权限攻击者经 SOAP 接管产品的攻击路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83288",
+      "title": "Oracle BI Search接管漏洞(CVE-2026-83288)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的闭源商业商务智能套件，用于报表、仪表盘与数据分析，本漏洞位于 BI Search 组件。 受影响版本中，低权限攻击者在获得运行该产品的基础设施本地登录后，即可较容易地利用 BI Search 相关缺陷完全接管 Oracle Business Intelligence Enterprise Edition，对机密性、完整性和可用性造成高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 BI Search 实施安全更新，阻断低权限本地登录用户接管产品的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83287",
+      "title": "Oracle BI EE信息泄露漏洞(CVE-2026-83287)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能套件，属于闭源商业软件，用于提供报表、仪表盘与数据分析，其中 Presentation Services 负责呈现层及 SOAP 访问。 受影响版本中，低权限攻击者可通过网络访问 Presentation Services 的 SOAP 接口利用该漏洞。官方说明该问题易于利用，成功后可扩大影响范围，造成未授权读取关键数据，以及获取 Oracle Business Intelligence Enterprise Edition 可访问的全部数据。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修复 Presentation Services 中的该问题，阻止低权限 SOAP 调用继续造成未授权数据访问。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83286",
+      "title": "Oracle BI接管漏洞(CVE-2026-83286)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能平台，属闭源软件，用于企业报表分析与数据展现，Platform Security 负责平台安全。 受影响版本中，Platform Security 组件存在难以利用的安全漏洞。未经身份认证的攻击者可通过 HTTP 远程访问触发该问题，利用成功后可完全接管 Oracle Business Intelligence Enterprise Edition。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，修复 Platform Security 组件中的该漏洞，阻止未认证攻击者经 HTTP 接管系统。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83285",
+      "title": "Oracle BI Search越权漏洞(CVE-2026-83285)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业闭源商业智能平台，用于企业报表、仪表盘与数据分析，其中 BI Search 组件提供业务内容检索能力。 受影响版本中，低权限攻击者只要具备 HTTP 网络访问，即可利用 BI Search 组件在无需用户交互的条件下获得对关键数据的未授权读取、创建、删除或修改能力，并可引起部分拒绝服务。公开资料未给出更细的源码触发路径。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对 BI Search 组件实施安全更新，阻断上述未授权数据访问与部分拒绝服务路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83282",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83282)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的闭源商业智能平台，用于企业报表、分析与数据可视化，其中 Platform Security 组件负责平台安全控制。 受影响版本中，Platform Security 组件存在易于利用的安全缺陷。低权限攻击者在具备 HTTP 网络访问时能够攻陷 Oracle Business Intelligence Enterprise Edition，并可能显著影响其他产品；成功利用可导致该产品被完全接管。 修复版本中通过发布 2026 年 9 月 Critical Security Patch Update，对 Platform Security 组件实施官方安全补丁，阻断低权限攻击者经 HTTP 接管系统的路径。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.9,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83273",
+      "title": "Oracle BI EE接管漏洞(CVE-2026-83273)",
+      "description": "Oracle Business Intelligence Enterprise Edition 是 Oracle Analytics 产品线中的商业智能平台，属于闭源商业软件，用于企业级报表、分析与数据可视化。 受影响版本中，Platform Security 组件存在可通过 HTTP 利用的安全漏洞。具备高权限的攻击者无需用户交互即可远程利用该漏洞，成功后可完全接管 Oracle Business Intelligence Enterprise Edition，造成机密性、完整性和可用性的全面影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复 Platform Security 组件中的该问题，切断高权限攻击者经 HTTP 接管产品的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83272",
+      "title": "Oracle Text接管漏洞(CVE-2026-83272)",
+      "description": "Oracle Database Server 是 Oracle 公司提供的商业关系型数据库产品，Oracle Text 是其中用于全文检索与文本索引的组件，源码未以 GitHub 开源项目形式公开。 受影响版本中，具备 Create Index 权限的低权限攻击者可通过 Oracle Net 远程访问数据库，利用 Oracle Text 组件中难以利用的安全缺陷接管 Oracle Text，并可能显著影响其他产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 针对 Oracle Database Server 发布的安全补丁，阻断该攻击路径并消除 Oracle Text 被接管的风险。",
+      "severity": "HIGH",
+      "cvss_score": 8.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83271",
+      "title": "Oracle Database权限提升漏洞(CVE-2026-83271)",
+      "description": "Oracle Database Server 是 Oracle 公司提供的商业关系型数据库产品，RDBMS 是其中负责数据存储与 SQL 处理的核心引擎组件，源码未公开。 受影响版本中，RDBMS 组件存在易被利用的缺陷。具备 DBMS_REDEFINITION 包 EXECUTE 权限的低权限攻击者，在通过 Oracle Net 远程访问时即可利用该缺陷接管 RDBMS，造成机密性、完整性和可用性全部受损。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Oracle Database Server 的 RDBMS 组件发布安全补丁，阻断具备 DBMS_REDEFINITION 执行权限的低权限用户接管数据库的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83269",
+      "title": "Oracle BI Publisher接管漏洞(CVE-2026-83269)",
+      "description": "Oracle BI Publisher 是 Oracle Analytics 产品线中的商业报表与发布组件，不属于开源软件，用于生成、管理和分发企业报表。 受影响版本中，BI Platform Security 组件存在可经 HTTP 远程利用的安全缺陷。未认证攻击者在具备网络访问条件时即可攻陷 Oracle BI Publisher，并造成对该产品的接管。公开资料未披露具体源码实现。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对受支持版本发布厂商安全补丁，阻断未认证 HTTP 访问导致产品接管的路径。公开资料未披露更细粒度的代码修改。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83264",
+      "title": "Oracle PLA安装漏洞(CVE-2026-83264)",
+      "description": "Oracle Product Lifecycle Analytics 是 Oracle Supply Chain 产品线中的商业软件，用于产品生命周期数据分析，源码未公开。 受影响版本中，Installation Issues 组件存在易被利用的安全缺陷。已登录产品运行基础设施的低权限攻击者可在本地、无需用户交互的条件下破坏该产品，并可因范围改变显著影响其他产品，造成对关键数据的未授权访问以及创建、删除或修改全部可访问数据。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修补 3.6.1 的 Installation Issues 组件，阻断低权限本地登录用户对关键数据的未授权访问与篡改；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.4,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83261",
+      "title": "Oracle PLA认证不当漏洞(CVE-2026-83261)",
+      "description": "Oracle Product Lifecycle Analytics 是 Oracle Supply Chain 产品线中的商业产品生命周期分析软件，闭源且非 GitHub 开源项目，Core 组件对外提供 HTTP 服务。 受影响版本中，Core 组件存在认证不当问题，未认证攻击者可通过网络以 HTTP 访问攻陷该产品，成功利用后可接管 Oracle Product Lifecycle Analytics。 修复版本中通过 2026 年 9 月 Critical Security Patch Update 修补 Core 组件的认证缺陷，阻止未认证 HTTP 请求接管该产品。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83257",
+      "title": "Oracle Commerce接管漏洞(CVE-2026-83257)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle Commerce 产品线中的商业软件，用于电商导购搜索与体验管理，本漏洞影响其中的 Forge 组件。 受影响版本中，Forge 组件存在难以利用的安全缺陷，低权限攻击者可经 HTTP 网络访问破坏 Oracle Commerce Guided Search / Oracle Commerce Experience Manager，成功攻击可导致该产品被完全接管。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对 11.4.0 的 Forge 组件实施安全更新，消除该接管风险。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83256",
+      "title": "Oracle Commerce接管漏洞(CVE-2026-83256)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle Commerce 产品线中的商业闭源电子商务搜索与体验管理软件，Forge 组件用于数据加工与索引。 受影响版本中，Forge 组件存在难以利用的安全缺陷，未经身份验证的攻击者凭借 TCP 网络访问即可破坏 Oracle Commerce Guided Search / Oracle Commerce Experience Manager，成功利用后可完全接管该产品。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Forge 组件中的该缺陷，阻止未经身份验证的攻击者经 TCP 接管产品。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83254",
+      "title": "Oracle Commerce接管漏洞(CVE-2026-83254)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle Commerce 套件中的闭源电子商务搜索与体验管理产品，Forge 组件负责搜索索引相关的数据处理。 受影响版本中，Forge 组件存在难以利用的安全缺陷，未认证攻击者在具备 TCP 网络访问条件时，成功利用后可完全接管 Oracle Commerce Guided Search / Oracle Commerce Experience Manager。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，修复 Forge 组件中可被未认证 TCP 访问利用的缺陷，阻止攻击者远程接管该产品。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83253",
+      "title": "Oracle Commerce接管漏洞(CVE-2026-83253)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle Commerce 产品线中的商业电商搜索与体验管理套件，其中 Endeca Application Controller 用于控制、管理与监控 Guided Search 实施中的组件，该产品为闭源商业软件。 受影响版本中，未认证攻击者在能够登录运行该产品的基础设施后，可利用 Endeca Application Controller 组件中的漏洞；成功利用还需其他用户交互，最终可完全接管 Oracle Commerce Guided Search / Oracle Commerce Experience Manager，造成机密性、完整性与可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 针对 11.4.0 发布的安全补丁，切断未认证本地攻击者在其他用户交互条件下接管该产品的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83249",
+      "title": "Oracle Commerce Forge接管漏洞(CVE-2026-83249)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle 商业闭源电子商务套件中的搜索与体验管理产品，Forge 组件负责数据加工与索引构建。 受影响版本中，Forge 组件存在难以利用的安全缺陷，已获得产品运行基础设施本地登录权限的低权限攻击者可借此攻陷该产品；漏洞影响还可扩散到其他产品，成功利用可导致 Oracle Commerce Guided Search / Oracle Commerce Experience Manager 被完全接管。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Forge 组件实施安全修补，阻断低权限本地登录后的接管路径。公开资料未披露具体源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83248",
+      "title": "Oracle Commerce拒绝服务漏洞(CVE-2026-83248)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle 商业电子商务产品，用于提供站内搜索、导购与体验管理能力，Forge 是其中的索引与数据处理组件，源码不对外公开。 受影响版本中，Forge 组件存在可被未认证攻击者通过 HTTP 远程利用的漏洞。攻击者无需用户交互即可造成产品挂起或反复崩溃，形成完全拒绝服务，并读取该产品中一部分可访问数据。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Forge 组件发布安全补丁，阻断未认证 HTTP 请求导致的拒绝服务与部分数据读取路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83247",
+      "title": "Oracle Commerce Forge接管漏洞(CVE-2026-83247)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle 商业闭源电子商务搜索与体验管理产品，Forge 组件用于构建和更新搜索索引。 受影响版本中，Forge 组件存在可被利用的安全缺陷。未通过产品身份认证的攻击者在登录到运行该软件的基础设施后，仍需其他人员完成交互操作，即可接管 Oracle Commerce Guided Search / Oracle Commerce Experience Manager。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 向 11.4.0 提供安全补丁，阻断该本地交互利用路径对产品的接管。",
+      "severity": "HIGH",
+      "cvss_score": 7.8,
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83245",
+      "title": "Oracle Commerce接管漏洞(CVE-2026-83245)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle Commerce 产品线中的商业搜索与购物体验管理软件，Forge 是其索引构建与数据处理组件，源码不公开。 受影响版本中，Forge 组件存在可经 HTTP 远程触发的安全缺陷。未认证攻击者只要能够通过网络访问该组件，即可在高攻击复杂度条件下利用该缺陷并完全接管 Oracle Commerce Guided Search / Oracle Commerce Experience Manager。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 向受支持的 11.4.0 提供官方安全补丁，阻断未认证攻击者经 HTTP 接管该产品的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83244",
+      "title": "Oracle Commerce Forge漏洞(CVE-2026-83244)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle Commerce 套件中的闭源电商搜索与体验管理产品，Forge 组件用于索引构建与数据加工。 受影响版本中，Forge 组件存在高复杂度安全缺陷。未授权攻击者在接入运行该产品硬件所在物理通信网段后，可经 TCP/IP 破坏 Forge，读取其可访问的全部关键数据、对部分数据执行未授权增删改，并造成服务挂起或可重复崩溃，形成完全拒绝服务。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复 11.4.0 的 Forge 组件，阻断相邻网络未授权访问导致的关键数据泄露、有限数据篡改与拒绝服务。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:A/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83243",
+      "title": "Oracle Commerce信息泄露(CVE-2026-83243)",
+      "description": "Oracle Commerce Guided Search / Oracle Commerce Experience Manager 是 Oracle 商业电子商务软件，用于站点导购搜索与体验管理，源码未公开。 受影响版本中，Experience Manager 组件存在易利用漏洞，低权限攻击者可通过 HTTP 远程访问，在无需用户交互的情况下获取该产品可访问的关键数据，并可能对其他产品造成显著影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 11.4.0 的 Experience Manager 组件实施安全更新，阻断该未授权数据访问路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83232",
+      "title": "Oracle Data Integrator接管漏洞(CVE-2026-83232)",
+      "description": "Oracle Data Integrator 是 Oracle Fusion Middleware 中的商业数据集成软件，用于设计与执行 ETL 流程，其中 Console / Repository Explorer 提供基于 Web 的仓库对象浏览与管理能力。 受影响版本中，Console / Repository Explorer 组件存在未经身份认证即可经 HTTP 远程利用的缺陷。攻击者在具备网络访问能力时，即可在无需用户交互的情况下攻陷该组件，并接管 Oracle Data Integrator。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复 Console / Repository Explorer 相关缺陷，阻断未认证攻击者经 HTTP 接管产品的路径。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83206",
+      "title": "Oracle信贷流程接管漏洞(CVE-2026-83206)",
+      "description": "Oracle Banking Corporate Lending Process Management 是 Oracle Financial Services Applications 产品线中的商业闭源对公信贷流程管理软件，用于银行对公贷款流程处理，本次受影响组件为 Base。 受影响版本中，低权限攻击者可通过 HTTP 网络访问该产品。该漏洞利用条件较苛刻，成功利用还需要除攻击者以外的人员进行交互；利用成功后可完全接管 Oracle Banking Corporate Lending Process Management，并造成机密性、完整性和可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 向 14.5.0.0.0 至 14.9.0.0.0 受支持版本提供安全补丁，消除该接管风险。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:R/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83204",
+      "title": "Oracle Sourcing接管漏洞(CVE-2026-83204)",
+      "description": "Oracle Sourcing 是 Oracle E-Business Suite 中的商业寻源采购产品，用于招标谈判等内部运营，并非开源软件。 受影响版本中，Internal Operations 组件存在难以利用的安全漏洞，已认证的低权限攻击者可经 HTTP 网络访问破坏 Oracle Sourcing，成功利用后可完全接管该产品，造成机密性、完整性与可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 为 Internal Operations 提供安全补丁，阻止低权限 HTTP 访问者接管 Oracle Sourcing；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83189",
+      "title": "Oracle用户管理接管漏洞(CVE-2026-83189)",
+      "description": "Oracle User Management 是 Oracle E-Business Suite 中的商业用户管理组件，用于企业环境中的用户账号、职责分配与代理用户委托，并非开源软件。 受影响版本中，Proxy User Delegation 组件存在易于利用的 HTTP 接口漏洞。已通过认证的低权限攻击者无需用户交互，经 HTTP 远程利用后可完全接管 Oracle User Management，并同时影响机密性、完整性与可用性。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，对 Proxy User Delegation 组件进行安全更新，阻止低权限攻击者经 HTTP 接管 Oracle User Management。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83186",
+      "title": "Oracle日历越权漏洞(CVE-2026-83186)",
+      "description": "Oracle Common Applications Calendar 是 Oracle E-Business Suite 中的商业日历产品组件，用于企业应用中的日程与日历管理，源码未公开。 受影响版本中，低权限攻击者可通过 HTTP 访问 Applications Calendar 组件，在无需用户交互的情况下对日历可访问的关键数据实施未授权创建、删除或修改，并造成该组件部分拒绝服务。官方未披露具体源码入口与实现细节。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修复该问题，切断低权限网络用户对日历关键数据的未授权改写及部分拒绝服务路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83185",
+      "title": "Oracle CRM用户管理漏洞(CVE-2026-83185)",
+      "description": "Oracle Common Applications 是 Oracle E-Business Suite 中的闭源商业组件，用于提供跨模块公共应用能力，其中 CRM User Management Framework 负责 CRM 相关用户管理。 受影响版本中，具备低权限的攻击者可通过 HTTP 访问 CRM User Management Framework，并在其他用户完成交互后未授权读取 Oracle Common Applications 的关键数据，同时创建、删除或修改这些数据。公开资料未披露具体源码实现。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 CRM User Management Framework 发布安全补丁，阻止低权限攻击者再经 HTTP 结合用户交互未授权读取或改写关键数据。",
+      "severity": "HIGH",
+      "cvss_score": 7.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83184",
+      "title": "Oracle AOL越权访问漏洞(CVE-2026-83184)",
+      "description": "Oracle Application Object Library 是 Oracle E-Business Suite 中的闭源基础组件，提供核心应用服务并随套件一同交付。 受影响版本中，Core 组件存在难以利用的安全缺陷。未经身份认证的攻击者可通过 HTTP 网络访问触发该缺陷，从而未授权读取 Oracle Application Object Library 可访问的关键数据，并对其实施未授权创建、删除或修改。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对 Application Object Library Core 组件实施安全更新，阻断未认证攻击者经 HTTP 读取或篡改关键数据的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.4,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83179",
+      "title": "Oracle应用日历越权漏洞(CVE-2026-83179)",
+      "description": "Oracle Common Applications Calendar 是 Oracle E-Business Suite 中的闭源商业组件，用于提供企业日历与日程相关应用能力。 受影响版本中，低权限攻击者可通过 HTTP 远程访问利用该难利用漏洞危害 Applications Calendar 组件，成功利用后可未授权创建、删除或修改关键数据，读取该组件可访问的关键或全部数据，并造成部分拒绝服务。 修复版本中通过应用 Oracle 2026年9月 Critical Security Patch Update 中针对该组件的安全补丁，阻断上述未授权数据访问、篡改与部分拒绝服务路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83178",
+      "title": "Oracle应用对象库接管漏洞(CVE-2026-83178)",
+      "description": "Oracle Application Object Library 是 Oracle E-Business Suite 的闭源基础组件，提供应用对象、安全与核心框架能力，供各业务模块通过 HTTP 调用。 受影响版本中，Core 组件存在难以利用的缺陷，高权限攻击者可在无需用户交互的条件下经 HTTP 远程访问并接管 Oracle Application Object Library，同时因范围变化对其他产品造成显著影响。公开资料未披露具体入口函数与危险操作实现。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update（CSPU）发布针对该组件的官方安全补丁，阻断高权限攻击者经 HTTP 接管 Application Object Library 的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83176",
+      "title": "Oracle通用应用接管漏洞(CVE-2026-83176)",
+      "description": "Oracle Common Applications 是 Oracle E-Business Suite 中的商业组件，用于提供 CRM 用户管理框架等企业应用能力，源码未公开。 受影响版本中，CRM User Management Framework 经 HTTP 对外提供服务，具备网络访问能力的高权限攻击者可利用该缺陷完全接管 Oracle Common Applications，造成机密性、完整性与可用性同时受损。 修复版本中通过官方 2026 年 9 月 Critical Security Patch Update 对 CRM User Management Framework 实施安全更新，阻断高权限攻击者经 HTTP 接管该组件的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83175",
+      "title": "Oracle对象库信息泄露(CVE-2026-83175)",
+      "description": "Oracle Application Object Library 是 Oracle E-Business Suite 中的商业闭源产品，Core 组件提供应用对象库基础能力。 受影响版本中，低权限攻击者经 HTTP 网络访问可以利用该漏洞，在无需用户交互的条件下读取 Oracle Application Object Library 的关键数据或全部可访问数据。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 官方安全补丁切断未授权数据访问路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "MEDIUM",
+      "cvss_score": 6.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83174",
+      "title": "Oracle CRM越权访问漏洞(CVE-2026-83174)",
+      "description": "Oracle CRM Technical Foundation 是 Oracle E-Business Suite 中的商业软件组件，用于提供 CRM 应用的 Application Framework 能力，源码不对外公开。 受影响版本中，低权限攻击者可通过 HTTP 远程访问 Application Framework 组件，在无需用户交互的条件下未授权读取 Oracle CRM Technical Foundation 的关键数据，并对其实施未授权的创建、删除或修改。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 提供安全补丁，消除该 HTTP 路径上的未授权数据访问与修改风险。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83173",
+      "title": "Oracle履约文档信息泄露(CVE-2026-83173)",
+      "description": "Oracle One-to-One Fulfillment 是 Oracle E-Business Suite 中的闭源履约产品，Documents 组件用于处理履约相关文档。 受影响版本中，低权限攻击者可通过 HTTP 访问 Documents 组件，在无需用户交互的情况下读取 Oracle One-to-One Fulfillment 的关键数据，并造成该组件部分拒绝服务。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，修补 Documents 组件中的缺陷，阻止低权限攻击者继续经 HTTP 获取关键数据或触发部分拒绝服务。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:N/A:L",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83170",
+      "title": "Oracle履约组件接管漏洞(CVE-2026-83170)",
+      "description": "Oracle One-to-One Fulfillment 是 Oracle E-Business Suite 中的商业履约产品，Documents 组件用于履约文档处理，源码不公开。 受影响版本中，低权限攻击者在接入运行 Oracle One-to-One Fulfillment 的主机所在物理通信网段后，可经 UDP 利用 Documents 组件中的漏洞完全接管该产品，导致机密性、完整性和可用性均被破坏。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Documents 组件，阻断相邻网段低权限攻击者经 UDP 接管该产品的路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.0,
+      "cvss_vector": "CVSS:3.1/AV:A/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83169",
+      "title": "Oracle履约组件接管漏洞(CVE-2026-83169)",
+      "description": "Oracle One-to-One Fulfillment 是 Oracle E-Business Suite 中的商业一对一履约组件，用于订单履约、客户沟通与文档分发，源码不对外开放。 受影响版本中，Java Server Issues 组件存在难以利用的安全漏洞，未认证攻击者可通过 HTTP 远程访问该组件。攻击成功后可接管 Oracle One-to-One Fulfillment，造成机密性、完整性和可用性全部受损。 修复版本中通过应用 Oracle 2026年9月 Critical Security Patch Update，对 Java Server Issues 组件实施官方安全更新，阻断未认证 HTTP 访问导致产品被接管的路径。公开资料未披露具体源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83168",
+      "title": "Oracle应用管理器接管漏洞(CVE-2026-83168)",
+      "description": "Oracle Applications Manager 是 Oracle E-Business Suite 中的闭源商业组件，用于管理企业应用运行环境，并提供 Oracle Diagnostics Interfaces 诊断能力。 受影响版本中，低权限攻击者可经 HTTPS 访问 Oracle Diagnostics Interfaces，在易利用条件下接管 Oracle Applications Manager，造成机密性、完整性与可用性同时受到高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 安全补丁切断该远程接管路径；公开资料未披露源码级修改，需按厂商补丁说明完成安装。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83167",
+      "title": "Oracle AOL信息泄露漏洞(CVE-2026-83167)",
+      "description": "Oracle Application Object Library 是 Oracle E-Business Suite 中的商业基础组件，用于提供用户、权限与应用对象等核心服务，源码未公开。 受影响版本中，Core 组件对未经身份认证且经 HTTP 到达的网络请求处理存在可被轻易利用的缺陷，未授权攻击者可远程获取该组件的关键数据或全部可访问数据。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 更新 Application Object Library Core 组件，阻止未认证 HTTP 请求继续取得关键数据。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83164",
+      "title": "Oracle客户交互历史接管漏洞(CVE-2026-83164)",
+      "description": "Oracle Customer Interaction History 是 Oracle E-Business Suite 中的商业闭源客户交互历史产品，Outcome-Result 组件用于记录与管理客户交互结果。 受影响版本中，Outcome-Result 组件存在可经 HTTP 利用的安全缺陷。已获得低权限的攻击者在具备网络访问能力且无需用户交互时，可以攻陷该产品并完成接管，造成机密性、完整性和可用性被完全破坏。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 针对 Outcome-Result 组件发布的安全补丁，阻断低权限攻击者经 HTTP 接管 Oracle Customer Interaction History 的路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83163",
+      "title": "Oracle AOL附件上传漏洞(CVE-2026-83163)",
+      "description": "Oracle Application Object Library 是 Oracle E-Business Suite 中的闭源基础组件，提供附件管理与文件上传等公共能力。 受影响版本中，Attachments / File Upload 组件存在可经 HTTP 远程利用的缺陷。低权限攻击者无需用户交互即可利用该问题，成功后可接管 Oracle Application Object Library，造成机密性、完整性和可用性全面受损。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，修补 Attachments / File Upload 相关缺陷，阻止低权限攻击者经 HTTP 接管 Application Object Library。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83162",
+      "title": "Oracle对象库越权漏洞(CVE-2026-83162)",
+      "description": "Oracle Application Object Library 是 Oracle E-Business Suite 中的商业基础组件，为各业务模块提供核心运行能力，并非开源软件。 受影响版本中，Core 组件在 HTTPS 访问路径上存在难以利用的安全缺陷。未经身份认证的网络攻击者可借该路径危害 Oracle Application Object Library，成功后能够未授权读取关键数据，并创建、删除或修改其可访问的关键数据。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Application Object Library Core 组件实施官方安全更新，阻断未认证攻击者经 HTTPS 读取或篡改关键数据的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.4,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83160",
+      "title": "Oracle数据库RDBMS接管漏洞(CVE-2026-83160)",
+      "description": "Oracle Database Server 是甲骨文公司的商业关系型数据库产品，其中 RDBMS 组件负责核心数据存储与 SQL 处理，源码不对外公开。 受影响版本中，具备 Create Table 权限的低权限攻击者可通过 Oracle Net 远程利用 RDBMS 组件漏洞，在无需用户交互的情况下接管数据库实例，导致机密性、完整性和可用性全面受损。 修复版本中通过 2026 年 9 月 Critical Security Patch Update 修复该 RDBMS 接管路径，阻止低权限账户经 Oracle Net 完成实例接管；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83156",
+      "title": "Oracle XDK接管漏洞(CVE-2026-83156)",
+      "description": "Oracle XML Developers Kit（XDK）是 Oracle Database Server 中的商业闭源 XML 处理组件，随数据库标准安装提供，也可用于仅客户端安装，用于构建和部署 XML 应用。 受影响版本中，具备 XDKC 权限的低权限攻击者可经 Oracle Net 访问难以利用的缺陷并接管 Oracle XML Developers Kit，造成机密性、完整性和可用性全部受损。该问题同样影响仅安装客户端的环境。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，在 Oracle XML Developers Kit 中消除该缺陷，阻止具备 XDKC 权限的攻击者再经 Oracle Net 接管该组件。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83152",
+      "title": "Oracle项目智能越权漏洞(CVE-2026-83152)",
+      "description": "Oracle Project Intelligence 是 Oracle E-Business Suite 中的商业项目管理与分析产品，用于项目组合及内部运营相关数据的查询与处理，源码未公开。 受影响版本中，Internal Operations 组件在经 HTTP 访问时存在易被利用的缺陷。低权限攻击者无需用户交互，可远程对 Oracle Project Intelligence 的关键数据或全部可访问数据实施未授权创建、删除或修改，并读取全部可访问数据。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对该组件实施安全更新，切断低权限攻击者经 HTTP 对项目智能数据的未授权读写路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83148",
+      "title": "Oracle ATS接管漏洞(CVE-2026-83148)",
+      "description": "Oracle Application Testing Suite 是 Oracle 出品的商业闭源应用测试套件，用于对 Web 应用开展功能测试与测试管理，其中包含 Test Manager for Web Apps 组件。 受影响版本中，已获得 Test Manager for Web Apps 权限的低权限攻击者可通过 HTTP 访问该组件并利用该漏洞完全接管 Oracle Application Testing Suite，造成机密性、完整性与可用性全部受损。 修复版本中通过 2026 年 9 月 Critical Security Patch Update 为 13.3.0.1 提供官方安全补丁，阻断上述低权限认证用户经 HTTP 接管产品的攻击路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83142",
+      "title": "Oracle Proposals信息泄露(CVE-2026-83142)",
+      "description": "Oracle Proposals 是 Oracle E-Business Suite 中的商业提案管理产品，用于企业内部商务提案及相关业务操作，源码未公开。 受影响版本中，Internal Operations 组件在经 HTTP 对外提供访问时存在易被利用的缺陷，低权限攻击者无需用户交互即可远程读取关键数据，并可获得该产品所能访问的全部数据；该问题还会产生范围变化，可能显著影响其他产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，对 Oracle Proposals Internal Operations 组件实施安全更新，阻断低权限账户经 HTTP 未授权读取数据的路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83141",
+      "title": "Oracle现场服务越权读取(CVE-2026-83141)",
+      "description": "Oracle Field Service 是 Oracle E-Business Suite 中的商业现场服务管理产品，Internal Operations 为其中内部运营组件，源码未公开。 受影响版本中，低权限攻击者可通过 HTTP 网络访问利用 Internal Operations 组件中的缺陷，读取 Oracle Field Service 的关键数据或全部可访问数据，并且攻击可能显著影响其他产品。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 修补 Internal Operations 组件，阻断低权限用户经 HTTP 越权读取现场服务数据的路径；公开资料未披露源码级改动。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83138",
+      "title": "Oracle备件管理接管漏洞(CVE-2026-83138)",
+      "description": "Oracle Spares Management 是 Oracle E-Business Suite 中的商业备件管理产品，不属于开源软件，主要用于企业内部备件库存及相关运营管理，Internal Operations 组件通过 HTTP 对外提供业务能力。 受影响版本中，Internal Operations 组件存在难以利用的安全缺陷，已具备高权限的攻击者可通过网络以 HTTP 访问该组件并接管 Oracle Spares Management，成功利用后还可能显著影响其他关联产品。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Internal Operations 相关安全问题进行修复，阻断该接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83137",
+      "title": "Oracle备件管理接管漏洞(CVE-2026-83137)",
+      "description": "Oracle Spares Management 是 Oracle E-Business Suite 中的备件管理产品，属于闭源商业软件，用于企业内部备件库存及相关业务操作。 受影响版本中，Internal Operations 组件存在可经 HTTP 远程利用的漏洞。已认证的低权限攻击者可通过网络访问该组件，成功利用后可完全接管 Oracle Spares Management，造成机密性、完整性和可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Internal Operations 组件进行安全修复，阻止低权限攻击者经 HTTP 接管 Oracle Spares Management；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83136",
+      "title": "Oracle备件管理接管漏洞(CVE-2026-83136)",
+      "description": "Oracle Spares Management 是 Oracle E-Business Suite 中的闭源备件管理产品，用于现场服务备件库存、补给与相关内部运营。 受影响版本中，Internal Operations 组件存在可被低权限攻击者经 HTTP 远程利用的缺陷。已具备低权限的攻击者无需用户交互即可攻陷该组件，成功利用可导致 Oracle Spares Management 被完全接管。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 提供的安全补丁阻断上述 HTTP 利用路径，使低权限用户无法再接管 Internal Operations 组件。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83129",
+      "title": "Oracle Sales数据泄露漏洞(CVE-2026-83129)",
+      "description": "Oracle Sales 是 Oracle E-Business Suite 中的商业销售管理组件，用于企业内部销售业务处理，源码不公开。 受影响版本中，Internal Operations 组件存在可被低权限攻击者经 HTTP 远程利用的漏洞。具备网络访问能力的低权限账户能够攻陷 Oracle Sales，并因范围变化影响其他产品，最终造成未授权获取关键数据或全部 Oracle Sales 可访问数据。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修补该问题，公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83127",
+      "title": "Oracle离线销售信息泄露(CVE-2026-83127)",
+      "description": "Oracle Sales Offline 是 Oracle E-Business Suite 中的商业组件，用于支持离线销售场景下的内部操作，源代码未公开。 受影响版本中，Internal Operations 组件存在易于利用的漏洞，低权限攻击者在无需用户交互的条件下，可通过 HTTP 网络访问攻陷 Oracle Sales Offline，并因影响范围变化波及其他产品，成功利用后可未授权读取关键数据或该组件全部可访问数据。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，对 Oracle Sales Offline 的 Internal Operations 组件发布官方安全补丁，阻断低权限攻击者经 HTTP 未授权获取数据的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.7,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83124",
+      "title": "Oracle Sales Online接管漏洞(CVE-2026-83124)",
+      "description": "Oracle Sales Online 是 Oracle E-Business Suite 中的商业在线销售产品，提供销售流程与内部运营相关能力，源码不对外公开。 受影响版本中，Internal Operations 组件存在可经 HTTP 远程利用的漏洞。低权限攻击者无需用户交互便能攻陷 Oracle Sales Online，成功利用可导致对该产品的完全接管，并造成机密性、完整性与可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Oracle E-Business Suite 发布对应安全补丁，阻断低权限攻击者经 HTTP 接管 Oracle Sales Online 的利用路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83122",
+      "title": "Oracle报表管理器接管漏洞(CVE-2026-83122)",
+      "description": "Oracle Report Manager 是 Oracle E-Business Suite 中的商业报表管理产品，源码不公开，用于企业内部报表的生成、发布与管理。 受影响版本中，Internal Operations 组件在经 HTTPS 访问的处理路径上存在易被利用的安全缺陷。具备低权限的网络攻击者在无需用户交互的情况下能够攻陷 Oracle Report Manager，成功利用后可完全接管该组件。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Oracle Report Manager Internal Operations 组件实施安全修复，阻止低权限攻击者经 HTTPS 接管该组件。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83121",
+      "title": "Oracle Marketing接管漏洞(CVE-2026-83121)",
+      "description": "Oracle Marketing 是 Oracle E-Business Suite 中的商业营销管理产品，Audience 组件用于维护营销受众对象，产品源码未公开。 受影响版本中，低权限攻击者在具备 HTTP 网络访问条件时即可利用 Audience 组件中的缺陷，无需用户交互即可完全接管 Oracle Marketing。官方公告未披露具体漏洞类型、接口名称或源码位置。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，阻断低权限攻击者经 HTTP 接管 Oracle Marketing 的攻击路径。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83120",
+      "title": "Oracle Alert接管漏洞(CVE-2026-83120)",
+      "description": "Oracle Alert 是 Oracle E-Business Suite 中的闭源异常监控与通知组件，用于按事件或周期检查业务数据并发送通知或执行预定义动作。 受影响版本中，Oracle Alert 的 Internal Operations 组件存在可被低权限用户经 HTTP 利用的漏洞。具备网络访问能力的低权限攻击者无需用户交互即可利用该问题，成功后可接管 Oracle Alert。厂商未公开具体源码路径、触发接口或漏洞类别。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对 Oracle E-Business Suite 中的 Oracle Alert 发布安全补丁，切断低权限 HTTP 访问对 Internal Operations 的接管路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83119",
+      "title": "Oracle用户管理接管漏洞(CVE-2026-83119)",
+      "description": "Oracle User Management 是 Oracle E-Business Suite 中的商业用户管理组件，用于企业内部账号与访问权限管理，源码未公开。 受影响版本中，Internal Operations 组件在通过 HTTP 处理低权限用户请求时存在易被利用的安全缺陷。具备网络访问能力的低权限攻击者可借此攻陷 Oracle User Management，并造成机密性、完整性与可用性的全面影响，实现对产品的接管。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Internal Operations 相关处理进行安全更新，阻断低权限 HTTP 请求接管 User Management 的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 8.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83114",
+      "title": "Oracle Quality接管漏洞(CVE-2026-83114)",
+      "description": "Oracle Quality 是 Oracle E-Business Suite 中的质量管理产品，属于闭源商业软件，用于企业质量管理相关业务。 受影响版本中，Oracle Quality 的 Internal Operations 组件存在难以利用的安全漏洞，已认证的低权限攻击者可通过 HTTP 访问该组件，成功利用后可接管 Oracle Quality，对机密性、完整性和可用性造成高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 发布的安全补丁修复该问题，阻止低权限用户经 HTTP 接管 Oracle Quality。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83113",
+      "title": "Oracle Quality越权访问漏洞(CVE-2026-83113)",
+      "description": "Oracle Quality 是 Oracle E-Business Suite 中的商业质量管理产品，用于质量计划、检验与不符合项等内部运营流程，并非开源软件。 受影响版本中，低权限攻击者可经 HTTP 远程访问 Internal Operations 组件并利用该易于利用的漏洞，未授权读取 Oracle Quality 的关键数据或全部可访问数据，并对部分可访问数据执行未授权的更新、插入或删除。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Oracle Quality Internal Operations 组件，消除低权限用户经 HTTP 未授权读取关键数据及部分数据增删改的风险。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83112",
+      "title": "Oracle租赁管理接管漏洞(CVE-2026-83112)",
+      "description": "Oracle Lease and Finance Management 是 Oracle E-Business Suite 中的商业闭源产品，用于企业租赁与融资业务管理，本次受影响组件为 Internal Operations，通过 HTTP 对外提供访问。 受影响版本中，厂商公告说明 Internal Operations 组件存在易于利用的安全漏洞。具备高权限并可通过 HTTP 访问该组件的攻击者，无需用户交互即可利用该漏洞，成功后可完全接管 Oracle Lease and Finance Management。官方未披露具体漏洞类型与代码位置。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 对 Internal Operations 组件发布安全补丁，消除高权限攻击者经 HTTP 接管该产品的风险；公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.2,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83111",
+      "title": "Oracle合作伙伴管理越权(CVE-2026-83111)",
+      "description": "Oracle Partner Management 是 Oracle E-Business Suite 中的商业产品，用于合作伙伴关系与内部运营管理，源码不公开。 受影响版本中，Internal Operations 组件存在难以利用的缺陷。具备低权限的攻击者可通过 HTTP 远程访问，在无需用户交互的条件下读取 Oracle Partner Management 的全部可访问关键数据，并对部分可访问数据执行未授权的更新、插入或删除；该问题还可显著影响其他关联产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update，对 Internal Operations 组件实施安全修补，阻断低权限攻击者经 HTTP 获取全部可访问数据及改写部分数据的路径。公开资料未披露更细粒度的源码修改。",
+      "severity": "HIGH",
+      "cvss_score": 7.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:L/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83110",
+      "title": "Oracle Marketing信息泄露(CVE-2026-83110)",
+      "description": "Oracle Marketing 是 Oracle E-Business Suite 中的商业营销管理产品，提供受众管理等能力，为闭源商业软件。 受影响版本中，Audience 组件在处理经 HTTP 传入的未认证网络请求时存在安全缺陷，未认证攻击者可远程获取 Oracle Marketing 中的关键数据或全部可访问数据。 修复版本中通过 Oracle 2026年9月 Critical Security Patch Update 对 Audience 组件实施安全更新，阻断未认证 HTTP 请求获取关键数据的路径。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83109",
+      "title": "Oracle Forms信息泄露(CVE-2026-83109)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的闭源企业级表单开发与运行组件，用于构建和部署基于表单的业务应用，Forms Services 可通过 HTTP 对外提供表单服务。 受影响版本中，Forms Services、C/S 与 Charmode 组件存在未授权数据读取问题。未认证攻击者经 HTTP 远程访问即可读取 Oracle Forms 中一部分可访问数据，官方标明该漏洞易于利用。 修复版本中通过应用 2026 年 9 月 Critical Security Patch Update，切断未认证 HTTP 访问对部分 Forms 数据的读取路径。",
+      "severity": "MEDIUM",
+      "cvss_score": 5.3,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83108",
+      "title": "Oracle Forms远程接管漏洞(CVE-2026-83108)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的商业闭源产品，用于构建和部署基于表单的企业应用，Forms Services、C/S 与 Charmode 是其运行与访问组件。 受影响版本中，未经身份认证的攻击者可通过 HTTP 远程访问 Forms Services、C/S、Charmode 组件，在低攻击复杂度下攻陷 Oracle Forms，并完成对 Oracle Forms 的接管，造成机密性、完整性与可用性的高影响。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 为 12.2.1.19.0 与 14.1.2.0.0 提供安全补丁，阻断该未认证 HTTP 接管路径；公开资料未披露更细粒度的源码修改。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.8,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83107",
+      "title": "Oracle Forms接管漏洞(CVE-2026-83107)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的商业闭源产品，用于开发与部署企业级表单应用，受影响组件包括 Forms Services、客户端/服务器（C/S）及字符模式（Charmode）。 受影响版本中，高权限攻击者可在无需用户交互的条件下，经 HTTP 网络访问 Forms Services、C/S 与 Charmode 相关服务并攻陷 Oracle Forms，攻击还可显著影响其他产品，最终导致 Oracle Forms 被完全接管。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update 提供的官方安全补丁，阻断该 HTTP 利用路径，消除对 Oracle Forms 的接管风险。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83106",
+      "title": "Oracle Forms接管漏洞(CVE-2026-83106)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的闭源企业应用开发与运行产品，用于构建和部署基于表单的业务系统，相关组件包括 Forms Services、C/S 与 Charmode。 受影响版本中，低权限攻击者可经 HTTP 访问 Forms Services、C/S 或 Charmode，在高攻击复杂度条件下破坏 Oracle Forms 的机密性、完整性与可用性，并接管该产品。官方未公开具体漏洞类型与触发代码。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 修补 Forms Services、C/S 与 Charmode 相关安全缺陷，阻止低权限攻击者经 HTTP 接管 Oracle Forms。",
+      "severity": "HIGH",
+      "cvss_score": 7.5,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83105",
+      "title": "Oracle Forms远程接管漏洞(CVE-2026-83105)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的商业表单开发与运行时产品，用于构建和部署企业级表单应用；Forms Services 通过 HTTP 对外提供运行时服务，并涵盖客户端/服务器（C/S）与字符模式（Charmode）组件，源码未公开。 受影响版本中，未认证攻击者具备 HTTP 网络访问时，可在无需用户交互的条件下利用难以触发的缺陷接管 Oracle Forms，并可能显著影响其他产品。 修复版本中通过应用 Oracle 2026 年 9 月 Critical Security Patch Update 补丁阻断该未认证 HTTP 接管路径；厂商未公开更细粒度的源码修改。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.0,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83104",
+      "title": "Oracle Forms越权漏洞(CVE-2026-83104)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的商业表单开发与运行产品，用于构建和部署企业级表单应用，不属于开源软件。 受影响版本中，Forms Services、C/S 与 Charmode 组件在经 TCP 提供网络访问时存在安全缺陷，未认证攻击者可在无需用户交互的情况下入侵 Oracle Forms，从而未授权读取、创建、删除或修改 Oracle Forms 可访问的关键数据。 修复版本中通过安装 Oracle 2026 年 9 月 Critical Security Patch Update，对上述组件实施官方安全更新，阻断未认证 TCP 访问导致的关键数据未授权读写。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:N",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    },
+    {
+      "cve_id": "AVD-2026-83103",
+      "title": "Oracle Forms远程接管漏洞(CVE-2026-83103)",
+      "description": "Oracle Forms 是 Oracle Fusion Middleware 中的商业闭源组件，用于构建、部署和运行基于表单的企业应用，本漏洞位于 Forms Services、C/S 与 Charmode。 受影响版本中，高权限攻击者可通过 HTTP 远程访问上述组件，在无需用户交互的条件下利用该漏洞完全接管 Oracle Forms，并因影响范围变更波及其他关联产品。官方确认受支持且受影响的版本为 12.2.1.19.0 与 14.1.2.0.0。 修复版本中通过 Oracle 2026 年 9 月 Critical Security Patch Update 为上述版本提供安全补丁，阻断该远程接管路径。公开资料未披露源码级修改细节。",
+      "severity": "CRITICAL",
+      "cvss_score": 9.1,
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:C/C:H/I:H/A:H",
+      "published_date": "2026-09-16T00:00:00",
+      "modified_date": "2026-09-16T00:00:00",
+      "disclosure_date": "2026-09-16",
+      "references": [
+        "https://www.oracle.com/security-alerts/cspusep2026.html"
+      ],
+      "solution": "建议您更新当前系统或软件至最新版，完成漏洞的修复。",
+      "cwe_ids": [],
+      "patch_status": "",
+      "exploit_status": ""
+    }
+  ]
+}
